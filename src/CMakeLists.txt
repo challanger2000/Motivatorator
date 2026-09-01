@@ -1,6 +1,8 @@
 smtg_add_vst3plugin(Motivatorator
     MotivatoratorProcessor.cpp
     MotivatoratorProcessor.h
+    MotivatoratorEditor.cpp
+    MotivatoratorEditor.h
     MotivatoratorFactory.cpp)
 
 target_link_libraries(Motivatorator PRIVATE sdk vstgui_support)
