@@ -64,8 +64,8 @@ void MotivatoratorProcessor::handleParameters(ProcessData& data) {
                 const int newMode = normalizedToIndex(value, 3);
                 if (newMode != mode_) {
                     mode_ = newMode;
-                    needsPhraseEmit_ = true;
                     chooseNextPhrase();
+                    needsPhraseEmit_ = true;
                     resetIntervalCounter();
                 }
                 break;
@@ -74,8 +74,8 @@ void MotivatoratorProcessor::handleParameters(ProcessData& data) {
                 const int newLanguage = normalizedToIndex(value, 2);
                 if (newLanguage != language_) {
                     language_ = newLanguage;
-                    needsPhraseEmit_ = true;
                     chooseNextPhrase();
+                    needsPhraseEmit_ = true;
                 }
                 break;
             }
@@ -167,7 +167,7 @@ void MotivatoratorProcessor::resetIntervalCounter() {
             intervalRng_ ^= intervalRng_ << 13;
             intervalRng_ ^= intervalRng_ >> 17;
             intervalRng_ ^= intervalRng_ << 5;
-            seconds = 20.0 + static_cast<double>(intervalRng_ % 101u); // 20..120 s
+            seconds = 20.0 + static_cast<double>(intervalRng_ % 101u);
             break;
     }
     samplesUntilNext_ = static_cast<int64>(seconds * sampleRate_);
@@ -198,7 +198,7 @@ tresult PLUGIN_API MotivatoratorProcessor::process(ProcessData& data) {
     }
 
     if (needsPhraseEmit_) {
-        if (currentPhraseGlobal_ == 0 && motivatorPos_ == 0 && demotivatorPos_ == 0)
+        if (motivatorPos_ == 0 && demotivatorPos_ == 0)
             chooseNextPhrase();
         emitPhrase(data);
         needsPhraseEmit_ = false;
@@ -251,14 +251,14 @@ tresult PLUGIN_API MotivatoratorController::initialize(FUnknown* context) {
     character->appendString(STR16("D.O.M."));
     parameters.addParameter(character);
 
-    auto* phrase = new StringListParameter(STR16("Phrase"), kPhraseId, nullptr, ParameterInfo::kIsReadOnly);
-    for (const auto& p : kMotivator) phrase->appendString(String(p.de).text16());
-    for (const auto& p : kDemotivator) phrase->appendString(String(p.de).text16());
-    for (const auto& p : kMotivator) phrase->appendString(String(p.en).text16());
-    for (const auto& p : kDemotivator) phrase->appendString(String(p.en).text16());
+    auto* phrase = new StringListParameter(STR16("Phrase"), kPhraseId);
+    for (const auto& p : kMotivator) phrase->appendString(p.de);
+    for (const auto& p : kDemotivator) phrase->appendString(p.de);
+    for (const auto& p : kMotivator) phrase->appendString(p.en);
+    for (const auto& p : kDemotivator) phrase->appendString(p.en);
     parameters.addParameter(phrase);
 
-    auto* tone = new StringListParameter(STR16("Phrase Tone"), kPhraseToneId, nullptr, ParameterInfo::kIsReadOnly);
+    auto* tone = new StringListParameter(STR16("Phrase Tone"), kPhraseToneId);
     tone->appendString(STR16("POSITIVE"));
     tone->appendString(STR16("NEGATIVE"));
     parameters.addParameter(tone);
