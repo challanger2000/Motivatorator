@@ -1,8 +1,6 @@
 #include "MotivatoratorEditor.h"
 #include "MotivatoratorProcessor.h"
-#include "vstgui/lib/cviewcontainer.h"
 #include "vstgui/lib/controls/ccontrol.h"
-#include <cstring>
 
 namespace Steinberg::Vst {
 
@@ -24,7 +22,10 @@ VSTGUI::CView* MotivatoratorEditor::verifyView(VSTGUI::CView* view, const VSTGUI
     return view;
 }
 
-VSTGUI::IControlListener* MotivatoratorEditor::getControlListener(VSTGUI::UTF8StringPtr) { return this; }
+VSTGUI::IControlListener* MotivatoratorEditor::getControlListener(VSTGUI::UTF8StringPtr name) {
+    if (name && std::string(name) == "OptionsListener") return this;
+    return nullptr;
+}
 
 void MotivatoratorEditor::showOptions(bool show) {
     optionsVisible_ = show;
@@ -37,11 +38,7 @@ void MotivatoratorEditor::showOptions(bool show) {
 
 void MotivatoratorEditor::valueChanged(VSTGUI::CControl* control) {
     if (!control) return;
-    if (control->getTag() == static_cast<int32>(kOptionsId) && control->getValue() >= 0.5f) {
-        showOptions(!optionsVisible_);
-        control->setValue(0.f);
-        control->invalid();
-    }
+    showOptions(!optionsVisible_);
 }
 
 } // namespace Steinberg::Vst
