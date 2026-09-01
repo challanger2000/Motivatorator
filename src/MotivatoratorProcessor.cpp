@@ -10,6 +10,8 @@
 
 namespace Steinberg::Vst {
 
+using namespace MotivatoratorPhrases;
+
 namespace {
 constexpr int kModeMotivator = 0;
 constexpr int kModeDemotivator = 1;
@@ -120,8 +122,6 @@ tresult PLUGIN_API MotivatoratorProcessor::process(ProcessData& data){
         else if(data.symbolicSampleSize==kSample64){for(int c=0;c<ch;++c)if(in.channelBuffers64[c]&&out.channelBuffers64[c])std::memcpy(out.channelBuffers64[c],in.channelBuffers64[c],sizeof(double)*data.numSamples);}}
     if(needsPhraseEmit_)emitPhrase(data); if(!muted_&&data.numSamples>0){samplesUntilNext_-=data.numSamples;if(samplesUntilNext_<=0){chooseNextPhrase();emitPhrase(data);resetIntervalCounter();}} return kResultOk;
 }
-
-MotivatoratorController::MotivatoratorController() = default;
 
 tresult PLUGIN_API MotivatoratorController::initialize(FUnknown* context){
     auto result=EditControllerEx1::initialize(context);if(result!=kResultOk)return result;
