@@ -1,35 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <vstgui-ui-description version="1">
   <control-tags>
-    <control-tag name="mode" tag="100"/><control-tag name="next" tag="101"/><control-tag name="mute" tag="102"/><control-tag name="options" tag="103"/><control-tag name="language" tag="104"/><control-tag name="interval" tag="105"/><control-tag name="character" tag="106"/><control-tag name="phrase" tag="107"/><control-tag name="tone" tag="108"/>
+    <control-tag name="mode" tag="100"/>
+    <control-tag name="next" tag="101"/>
+    <control-tag name="mute" tag="102"/>
+    <control-tag name="language" tag="104"/>
+    <control-tag name="interval" tag="105"/>
+    <control-tag name="character" tag="106"/>
+    <control-tag name="phrase" tag="107"/>
+    <control-tag name="tone" tag="108"/>
   </control-tags>
-  <fonts><font name="title" font-name="Arial" size="28" bold="true"/><font name="quote" font-name="Arial" size="18" bold="true"/><font name="button" font-name="Arial" size="13" bold="true"/><font name="tiny" font-name="Arial" size="10"/><font name="face" font-name="Arial" size="38" bold="true"/><font name="name" font-name="Arial" size="17" bold="true"/></fonts>
-  <colors><color name="bg" rgba="#121419ff"/><color name="panel" rgba="#20242cff"/><color name="panel2" rgba="#292e38ff"/><color name="text" rgba="#f5f5f5ff"/><color name="muted" rgba="#9fa7b5ff"/><color name="buttonbg" rgba="#303641ff"/><color name="motivate" rgba="#39d98aff"/><color name="demotivate" rgba="#ff5c5cff"/><color name="mixed" rgba="#f0b84bff"/></colors>
 
-  <template name="Gnomi" class="CViewContainer" size="190,182" background-color="panel"><view class="CTextLabel" origin="12,22" size="166,62" title="^_^" font="face" font-color="mixed" transparent="true" text-alignment="center"/><view class="CTextLabel" origin="12,88" size="166,28" title="GNOMI" font="name" font-color="text" transparent="true" text-alignment="center"/><view class="CTextLabel" origin="12,124" size="166,22" title="STUDIO GOBLIN" font="tiny" font-color="muted" transparent="true" text-alignment="center"/></template>
-  <template name="Rocky" class="CViewContainer" size="190,182" background-color="panel"><view class="CTextLabel" origin="12,22" size="166,62" title="[ + + ]" font="face" font-color="mixed" transparent="true" text-alignment="center"/><view class="CTextLabel" origin="12,88" size="166,28" title="ROCKY" font="name" font-color="text" transparent="true" text-alignment="center"/><view class="CTextLabel" origin="12,124" size="166,22" title="STUDIO ROBOT" font="tiny" font-color="muted" transparent="true" text-alignment="center"/></template>
-  <template name="Dom" class="CViewContainer" size="190,182" background-color="panel"><view class="CTextLabel" origin="12,22" size="166,62" title="}:D" font="face" font-color="demotivate" transparent="true" text-alignment="center"/><view class="CTextLabel" origin="12,88" size="166,28" title="D.O.M." font="name" font-color="text" transparent="true" text-alignment="center"/><view class="CTextLabel" origin="12,124" size="166,22" title="DARK STUDIO ASSISTANT" font="tiny" font-color="muted" transparent="true" text-alignment="center"/></template>
+  <fonts>
+    <font name="title" font-name="Arial" size="28" bold="true"/>
+    <font name="quote" font-name="Arial" size="18" bold="true"/>
+    <font name="button" font-name="Arial" size="13" bold="true"/>
+    <font name="tiny" font-name="Arial" size="10"/>
+    <font name="face" font-name="Arial" size="38" bold="true"/>
+    <font name="name" font-name="Arial" size="17" bold="true"/>
+  </fonts>
 
-  <template name="MainPage" class="CViewContainer" size="620,306" background-color="bg">
-    <view class="UIViewSwitchContainer" origin="20,16" size="190,182" template-names="Gnomi,Rocky,Dom" template-switch-control="character" animation-time="0"/>
-    <view class="CTextLabel" origin="230,16" size="370,24" title="YOUR COMPLETELY UNNECESSARY STUDIO COMPANION" font="tiny" font-color="muted" transparent="true" text-alignment="center"/>
-    <view class="CParamDisplay" origin="230,48" size="370,150" control-tag="phrase" font="quote" font-color="text" back-color="panel2" frame-color="mixed" frame-width="1" text-alignment="center"/>
-    <view class="CTextLabel" origin="20,214" size="130,20" title="MODE" font="tiny" font-color="muted" transparent="true"/>
-    <view class="COptionMenu" origin="20,236" size="190,34" control-tag="mode" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
-    <view class="CTextButton" origin="230,236" size="170,34" title="NEXT" control-tag="next" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" kick-style="true"/>
-    <view class="CTextButton" origin="420,236" size="180,34" title="MUTE ME" control-tag="mute" font="button" font-color="text" back-color="buttonbg" frame-color="mixed"/>
-    <view class="CTextLabel" origin="20,282" size="580,18" title="No audio analysis. No DSP tricks. Just judgement." font="tiny" font-color="muted" transparent="true" text-alignment="center"/>
-  </template>
-  <template name="OptionsPage" class="CViewContainer" size="620,306" background-color="panel">
-    <view class="CTextLabel" origin="20,18" size="580,34" title="OPTIONS" font="name" font-color="mixed" transparent="true" text-alignment="center"/>
-    <view class="CTextLabel" origin="90,74" size="150,22" title="CHARACTER" font="tiny" font-color="muted" transparent="true"/><view class="COptionMenu" origin="250,68" size="280,34" control-tag="character" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
-    <view class="CTextLabel" origin="90,126" size="150,22" title="LANGUAGE" font="tiny" font-color="muted" transparent="true"/><view class="COptionMenu" origin="250,120" size="280,34" control-tag="language" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
-    <view class="CTextLabel" origin="90,178" size="150,22" title="INTERVAL" font="tiny" font-color="muted" transparent="true"/><view class="COptionMenu" origin="250,172" size="280,34" control-tag="interval" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
-    <view class="CTextButton" origin="220,236" size="180,36" title="BACK" control-tag="options" font="button" font-color="text" back-color="buttonbg" frame-color="mixed"/>
-  </template>
-  <template name="view" class="CViewContainer" size="660,390" background-color="bg">
-    <view class="CTextLabel" origin="20,12" size="620,42" title="MOTIVATORATOR" font="title" font-color="mixed" transparent="true" text-alignment="center"/>
-    <view class="CTextButton" origin="564,18" size="76,28" title="OPTIONS" control-tag="options" font="tiny" font-color="text" back-color="buttonbg" frame-color="mixed"/>
-    <view class="UIViewSwitchContainer" origin="20,66" size="620,306" template-names="MainPage,OptionsPage" template-switch-control="options" animation-time="0"/>
+  <colors>
+    <color name="bg" rgba="#121419ff"/>
+    <color name="panel" rgba="#20242cff"/>
+    <color name="panel2" rgba="#292e38ff"/>
+    <color name="text" rgba="#f5f5f5ff"/>
+    <color name="muted" rgba="#9fa7b5ff"/>
+    <color name="buttonbg" rgba="#303641ff"/>
+    <color name="mixed" rgba="#f0b84bff"/>
+  </colors>
+
+  <template name="view" class="CViewContainer" size="700,430" background-color="bg">
+    <view class="CTextLabel" origin="20,12" size="660,42" title="MOTIVATORATOR" font="title" font-color="mixed" transparent="true" text-alignment="center"/>
+
+    <view class="CViewContainer" origin="20,68" size="190,176" background-color="panel">
+      <view class="CTextLabel" origin="12,18" size="166,60" title="^_^" font="face" font-color="mixed" transparent="true" text-alignment="center"/>
+      <view class="CParamDisplay" origin="18,88" size="154,34" control-tag="character" font="name" font-color="text" back-color="panel2" frame-color="mixed" frame-width="1" text-alignment="center"/>
+      <view class="CTextLabel" origin="12,132" size="166,24" title="YOUR STUDIO CREATURE" font="tiny" font-color="muted" transparent="true" text-alignment="center"/>
+    </view>
+
+    <view class="CTextLabel" origin="230,68" size="450,24" title="YOUR COMPLETELY UNNECESSARY STUDIO COMPANION" font="tiny" font-color="muted" transparent="true" text-alignment="center"/>
+    <view class="CParamDisplay" origin="230,100" size="450,144" control-tag="phrase" font="quote" font-color="text" back-color="panel2" frame-color="mixed" frame-width="1" text-alignment="center"/>
+
+    <view class="CTextLabel" origin="20,260" size="100,18" title="MODE" font="tiny" font-color="muted" transparent="true"/>
+    <view class="COptionMenu" origin="20,282" size="190,34" control-tag="mode" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
+    <view class="CTextButton" origin="230,282" size="210,34" title="NEXT" control-tag="next" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" kick-style="true"/>
+    <view class="CTextButton" origin="460,282" size="220,34" title="MUTE ME" control-tag="mute" font="button" font-color="text" back-color="buttonbg" frame-color="mixed"/>
+
+    <view class="CViewContainer" origin="20,334" size="660,74" background-color="panel">
+      <view class="CTextLabel" origin="12,8" size="84,18" title="CHARACTER" font="tiny" font-color="muted" transparent="true"/>
+      <view class="COptionMenu" origin="12,30" size="190,30" control-tag="character" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
+      <view class="CTextLabel" origin="224,8" size="84,18" title="LANGUAGE" font="tiny" font-color="muted" transparent="true"/>
+      <view class="COptionMenu" origin="224,30" size="190,30" control-tag="language" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
+      <view class="CTextLabel" origin="436,8" size="84,18" title="INTERVAL" font="tiny" font-color="muted" transparent="true"/>
+      <view class="COptionMenu" origin="436,30" size="212,30" control-tag="interval" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
+    </view>
   </template>
 </vstgui-ui-description>
