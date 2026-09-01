@@ -1,7 +1,9 @@
 #include "MotivatoratorProcessor.h"
 #include "PhraseBank.h"
+#include "pluginterfaces/base/ibstream.h"
 #include "pluginterfaces/vst/ivstaudioprocessor.h"
 #include "pluginterfaces/vst/ivstparameterchanges.h"
+#include "base/source/fstreamer.h"
 #include "vstgui/plugin-bindings/vst3editor.h"
 #include <algorithm>
 #include <cstring>
@@ -13,6 +15,7 @@ using namespace MotivatoratorPhrases;
 namespace {
 constexpr int kModeMotivator = 0;
 constexpr int kModeDemotivator = 1;
+constexpr int32 kStateVersion = 1;
 
 inline int normalizedToIndex(ParamValue value, int count) {
     if (count <= 1) return 0;
@@ -47,14 +50,60 @@ tresult PLUGIN_API MotivatoratorProcessor::canProcessSampleSize(int32 s) {
     return (s == kSample32 || s == kSample64) ? kResultTrue : kResultFalse;
 }
 
+tresult PLUGIN_API MotivatoratorProcessor::getState(IBStream* state) {
+    if (!state) return kInvalidArgument;
+    IBStreamer stream(state, kLittleEndian);
+    if (!stream.writeInt32(kStateVersion)) return kResultFalse;
+    if (!stream.writeInt32(mode_)) return kResultFalse;
+    if (!stream.writeInt32(language_)) return kResultFalse;
+    if (!stream.writeInt32(interval_)) return kResultFalse;
+    if (!stream.writeInt32(character_)) return kResultFalse;
+    if (!stream.writeInt32(muted_ ? 1 : 0)) return kResultFalse;
+    if (!stream.writeInt32(mixedNextPositive_ ? 1 : 0)) return kResultFalse;
+    if (!stream.writeInt32(phrasePositive_ ? 1 : 0)) return kResultFalse;
+    if (!stream.writeInt32(motivatorPos_)) return kResultFalse;
+    if (!stream.writeInt32(demotivatorPos_)) return kResultFalse;
+    if (!stream.writeInt32(motivatorStart_)) return kResultFalse;
+    if (!stream.writeInt32(demotivatorStart_)) return kResultFalse;
+    if (!stream.writeInt32(motivatorStep_)) return kResultFalse;
+    if (!stream.writeInt32(demotivatorStep_)) return kResultFalse;
+    if (!stream.writeInt32(currentPhraseGlobal_)) return kResultFalse;
+    return kResultOk;
+}
+
+tresult PLUGIN_API MotivatoratorProcessor::setState(IBStream* state) {
+    if (!state) return kInvalidArgument;
+    IBStreamer stream(state, kLittleEndian);
+    int32 version = 0;
+    if (!stream.readInt32(version) || version != kStateVersion) return kResultFalse;
+
+    int32 value = 0;
+    if (!stream.readInt32(value)) return kResultFalse; mode_ = std::clamp(value, 0, 2);
+    if (!stream.readInt32(value)) return kResultFalse; language_ = std::clamp(value, 0, 1);
+    if (!stream.readInt32(value)) return kResultFalse; interval_ = std::clamp(value, 0, 5);
+    if (!stream.readInt32(value)) return kResultFalse; character_ = std::clamp(value, 0, 2);
+    if (!stream.readInt32(value)) return kResultFalse; muted_ = value != 0;
+    if (!stream.readInt32(value)) return kResultFalse; mixedNextPositive_ = value != 0;
+    if (!stream.readInt32(value)) return kResultFalse; phrasePositive_ = value != 0;
+    if (!stream.readInt32(value)) return kResultFalse; motivatorPos_ = std::clamp(value, 0, static_cast<int>(kMotivatorCount) - 1);
+    if (!stream.readInt32(value)) return kResultFalse; demotivatorPos_ = std::clamp(value, 0, static_cast<int>(kDemotivatorCount) - 1);
+    if (!stream.readInt32(value)) return kResultFalse; motivatorStart_ = std::clamp(value, 0, static_cast<int>(kMotivatorCount) - 1);
+    if (!stream.readInt32(value)) return kResultFalse; demotivatorStart_ = std::clamp(value, 0, static_cast<int>(kDemotivatorCount) - 1);
+    if (!stream.readInt32(value)) return kResultFalse; motivatorStep_ = (value == 7) ? 7 : 5;
+    if (!stream.readInt32(value)) return kResultFalse; demotivatorStep_ = (value == 5) ? 5 : 7;
+    if (!stream.readInt32(value)) return kResultFalse; currentPhraseGlobal_ = std::clamp(value, 0, static_cast<int>(kPhraseCount * 2) - 1);
+
+    needsPhraseEmit_ = true;
+    resetIntervalCounter();
+    return kResultOk;
+}
+
 void MotivatoratorProcessor::handleParameters(ProcessData& data) {
     if (!data.inputParameterChanges) return;
-
     const int32 count = data.inputParameterChanges->getParameterCount();
     for (int32 i = 0; i < count; ++i) {
         auto* queue = data.inputParameterChanges->getParameterData(i);
         if (!queue || queue->getPointCount() <= 0) continue;
-
         int32 sampleOffset = 0;
         ParamValue value = 0.0;
         if (queue->getPoint(queue->getPointCount() - 1, sampleOffset, value) != kResultTrue) continue;
@@ -62,46 +111,31 @@ void MotivatoratorProcessor::handleParameters(ProcessData& data) {
         switch (queue->getParameterId()) {
             case kModeId: {
                 const int newMode = normalizedToIndex(value, 3);
-                if (newMode != mode_) {
-                    mode_ = newMode;
-                    chooseNextPhrase();
-                    needsPhraseEmit_ = true;
-                    resetIntervalCounter();
-                }
+                if (newMode != mode_) { mode_ = newMode; chooseNextPhrase(); needsPhraseEmit_ = true; resetIntervalCounter(); }
                 break;
             }
             case kLanguageId: {
                 const int newLanguage = normalizedToIndex(value, 2);
-                if (newLanguage != language_) {
-                    language_ = newLanguage;
-                    chooseNextPhrase();
-                    needsPhraseEmit_ = true;
-                }
+                if (newLanguage != language_) { language_ = newLanguage; chooseNextPhrase(); needsPhraseEmit_ = true; }
                 break;
             }
             case kIntervalId: {
                 const int newInterval = normalizedToIndex(value, 6);
-                if (newInterval != interval_) {
-                    interval_ = newInterval;
-                    resetIntervalCounter();
-                }
+                if (newInterval != interval_) { interval_ = newInterval; resetIntervalCounter(); }
                 break;
             }
+            case kCharacterId:
+                character_ = normalizedToIndex(value, 3);
+                break;
             case kMuteId:
                 muted_ = value >= 0.5;
                 break;
             case kNextId: {
                 const bool state = value >= 0.5;
-                if (state != nextState_) {
-                    nextState_ = state;
-                    chooseNextPhrase();
-                    needsPhraseEmit_ = true;
-                    resetIntervalCounter();
-                }
+                if (state != nextState_) { nextState_ = state; chooseNextPhrase(); needsPhraseEmit_ = true; resetIntervalCounter(); }
                 break;
             }
-            default:
-                break;
+            default: break;
         }
     }
 }
@@ -111,7 +145,6 @@ int MotivatoratorProcessor::nextDeckIndex(bool motivator) {
     int& start = motivator ? motivatorStart_ : demotivatorStart_;
     int& step = motivator ? motivatorStep_ : demotivatorStep_;
     const int count = motivator ? static_cast<int>(kMotivatorCount) : static_cast<int>(kDemotivatorCount);
-
     const int result = (start + pos * step) % count;
     ++pos;
     if (pos >= count) {
@@ -123,14 +156,9 @@ int MotivatoratorProcessor::nextDeckIndex(bool motivator) {
 }
 
 void MotivatoratorProcessor::chooseNextPhrase() {
-    if (mode_ == kModeMotivator) {
-        phrasePositive_ = true;
-    } else if (mode_ == kModeDemotivator) {
-        phrasePositive_ = false;
-    } else {
-        phrasePositive_ = mixedNextPositive_;
-        mixedNextPositive_ = !mixedNextPositive_;
-    }
+    if (mode_ == kModeMotivator) phrasePositive_ = true;
+    else if (mode_ == kModeDemotivator) phrasePositive_ = false;
+    else { phrasePositive_ = mixedNextPositive_; mixedNextPositive_ = !mixedNextPositive_; }
 
     const int localIndex = nextDeckIndex(phrasePositive_);
     const int languageBase = language_ == 0 ? 0 : static_cast<int>(kPhraseCount);
@@ -140,13 +168,11 @@ void MotivatoratorProcessor::chooseNextPhrase() {
 
 void MotivatoratorProcessor::emitPhrase(ProcessData& data) {
     if (!data.outputParameterChanges) return;
-
     int32 queueIndex = 0;
     if (auto* phraseQueue = data.outputParameterChanges->addParameterData(kPhraseId, queueIndex)) {
         int32 pointIndex = 0;
         phraseQueue->addPoint(0, indexToNormalized(currentPhraseGlobal_, static_cast<int>(kPhraseCount * 2)), pointIndex);
     }
-
     queueIndex = 0;
     if (auto* toneQueue = data.outputParameterChanges->addParameterData(kPhraseToneId, queueIndex)) {
         int32 pointIndex = 0;
@@ -162,7 +188,6 @@ void MotivatoratorProcessor::resetIntervalCounter() {
         case 2: seconds = 60.0; break;
         case 3: seconds = 120.0; break;
         case 4: seconds = 300.0; break;
-        case 5:
         default:
             intervalRng_ ^= intervalRng_ << 13;
             intervalRng_ ^= intervalRng_ >> 17;
@@ -180,39 +205,28 @@ tresult PLUGIN_API MotivatoratorProcessor::process(ProcessData& data) {
         const auto& input = data.inputs[0];
         auto& output = data.outputs[0];
         const int32 channels = input.numChannels < output.numChannels ? input.numChannels : output.numChannels;
-
         if (data.symbolicSampleSize == kSample32) {
-            for (int32 ch = 0; ch < channels; ++ch) {
-                if (input.channelBuffers32[ch] && output.channelBuffers32[ch] && input.channelBuffers32[ch] != output.channelBuffers32[ch]) {
+            for (int32 ch = 0; ch < channels; ++ch)
+                if (input.channelBuffers32[ch] && output.channelBuffers32[ch] && input.channelBuffers32[ch] != output.channelBuffers32[ch])
                     std::memcpy(output.channelBuffers32[ch], input.channelBuffers32[ch], static_cast<size_t>(data.numSamples) * sizeof(Sample32));
-                }
-            }
         } else if (data.symbolicSampleSize == kSample64) {
-            for (int32 ch = 0; ch < channels; ++ch) {
-                if (input.channelBuffers64[ch] && output.channelBuffers64[ch] && input.channelBuffers64[ch] != output.channelBuffers64[ch]) {
+            for (int32 ch = 0; ch < channels; ++ch)
+                if (input.channelBuffers64[ch] && output.channelBuffers64[ch] && input.channelBuffers64[ch] != output.channelBuffers64[ch])
                     std::memcpy(output.channelBuffers64[ch], input.channelBuffers64[ch], static_cast<size_t>(data.numSamples) * sizeof(Sample64));
-                }
-            }
         }
         output.silenceFlags = input.silenceFlags;
     }
 
     if (needsPhraseEmit_) {
-        if (motivatorPos_ == 0 && demotivatorPos_ == 0)
-            chooseNextPhrase();
+        if (motivatorPos_ == 0 && demotivatorPos_ == 0) chooseNextPhrase();
         emitPhrase(data);
         needsPhraseEmit_ = false;
     }
 
     if (!muted_ && data.numSamples > 0) {
         samplesUntilNext_ -= data.numSamples;
-        if (samplesUntilNext_ <= 0) {
-            chooseNextPhrase();
-            emitPhrase(data);
-            resetIntervalCounter();
-        }
+        if (samplesUntilNext_ <= 0) { chooseNextPhrase(); emitPhrase(data); resetIntervalCounter(); }
     }
-
     return kResultOk;
 }
 
@@ -221,35 +235,19 @@ tresult PLUGIN_API MotivatoratorController::initialize(FUnknown* context) {
     if (result != kResultOk) return result;
 
     auto* mode = new StringListParameter(STR16("Mode"), kModeId);
-    mode->appendString(STR16("MOTIVATOR"));
-    mode->appendString(STR16("DEMOTIVATOR"));
-    mode->appendString(STR16("MIXED"));
-    parameters.addParameter(mode);
-
+    mode->appendString(STR16("MOTIVATOR")); mode->appendString(STR16("DEMOTIVATOR")); mode->appendString(STR16("MIXED")); parameters.addParameter(mode);
     parameters.addParameter(STR16("Next"), nullptr, 1, 0.0, ParameterInfo::kCanAutomate, kNextId);
     parameters.addParameter(STR16("Mute Me"), nullptr, 1, 0.0, ParameterInfo::kCanAutomate, kMuteId);
     parameters.addParameter(STR16("Options"), nullptr, 1, 0.0, 0, kOptionsId);
 
     auto* language = new StringListParameter(STR16("Language"), kLanguageId);
-    language->appendString(STR16("Deutsch"));
-    language->appendString(STR16("English"));
-    parameters.addParameter(language);
+    language->appendString(STR16("Deutsch")); language->appendString(STR16("English")); parameters.addParameter(language);
 
     auto* interval = new StringListParameter(STR16("Interval"), kIntervalId);
-    interval->appendString(STR16("15 sec"));
-    interval->appendString(STR16("30 sec"));
-    interval->appendString(STR16("1 min"));
-    interval->appendString(STR16("2 min"));
-    interval->appendString(STR16("5 min"));
-    interval->appendString(STR16("Random"));
-    parameters.addParameter(interval);
-    interval->setNormalized(0.4);
+    interval->appendString(STR16("15 sec")); interval->appendString(STR16("30 sec")); interval->appendString(STR16("1 min")); interval->appendString(STR16("2 min")); interval->appendString(STR16("5 min")); interval->appendString(STR16("Random")); parameters.addParameter(interval); interval->setNormalized(0.4);
 
     auto* character = new StringListParameter(STR16("Character"), kCharacterId);
-    character->appendString(STR16("GNOMI"));
-    character->appendString(STR16("ROCKY"));
-    character->appendString(STR16("D.O.M."));
-    parameters.addParameter(character);
+    character->appendString(STR16("GNOMI")); character->appendString(STR16("ROCKY")); character->appendString(STR16("D.O.M.")); parameters.addParameter(character);
 
     auto* phrase = new StringListParameter(STR16("Phrase"), kPhraseId);
     for (const auto& p : kMotivator) phrase->appendString(p.de);
@@ -259,16 +257,35 @@ tresult PLUGIN_API MotivatoratorController::initialize(FUnknown* context) {
     parameters.addParameter(phrase);
 
     auto* tone = new StringListParameter(STR16("Phrase Tone"), kPhraseToneId);
-    tone->appendString(STR16("POSITIVE"));
-    tone->appendString(STR16("NEGATIVE"));
-    parameters.addParameter(tone);
+    tone->appendString(STR16("POSITIVE")); tone->appendString(STR16("NEGATIVE")); parameters.addParameter(tone);
+    return kResultOk;
+}
 
+tresult PLUGIN_API MotivatoratorController::setComponentState(IBStream* state) {
+    if (!state) return kInvalidArgument;
+    IBStreamer stream(state, kLittleEndian);
+    int32 version = 0, mode = 0, language = 0, interval = 2, character = 0, muted = 0, value = 0;
+    if (!stream.readInt32(version) || version != kStateVersion) return kResultFalse;
+    if (!stream.readInt32(mode)) return kResultFalse;
+    if (!stream.readInt32(language)) return kResultFalse;
+    if (!stream.readInt32(interval)) return kResultFalse;
+    if (!stream.readInt32(character)) return kResultFalse;
+    if (!stream.readInt32(muted)) return kResultFalse;
+    // skip mixed flag, phrase tone, deck positions/starts/steps
+    for (int i = 0; i < 9; ++i) if (!stream.readInt32(value)) return kResultFalse;
+    int32 currentPhrase = value;
+
+    setParamNormalized(kModeId, indexToNormalized(std::clamp(mode, 0, 2), 3));
+    setParamNormalized(kLanguageId, indexToNormalized(std::clamp(language, 0, 1), 2));
+    setParamNormalized(kIntervalId, indexToNormalized(std::clamp(interval, 0, 5), 6));
+    setParamNormalized(kCharacterId, indexToNormalized(std::clamp(character, 0, 2), 3));
+    setParamNormalized(kMuteId, muted ? 1.0 : 0.0);
+    setParamNormalized(kPhraseId, indexToNormalized(std::clamp(currentPhrase, 0, static_cast<int>(kPhraseCount * 2) - 1), static_cast<int>(kPhraseCount * 2)));
     return kResultOk;
 }
 
 IPlugView* PLUGIN_API MotivatoratorController::createView(FIDString name) {
-    if (name && std::strcmp(name, ViewType::kEditor) == 0)
-        return new VSTGUI::VST3Editor(this, "view", "Motivatorator.uidesc");
+    if (name && std::strcmp(name, ViewType::kEditor) == 0) return new VSTGUI::VST3Editor(this, "view", "Motivatorator.uidesc");
     return nullptr;
 }
 
