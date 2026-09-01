@@ -1,16 +1,15 @@
 #include "MotivatoratorEditor.h"
 #include "MotivatoratorProcessor.h"
 #include "vstgui/lib/controls/ccontrol.h"
+#include "vstgui/uidescription/uiattributes.h"
 
 namespace Steinberg::Vst {
 
 MotivatoratorEditor::MotivatoratorEditor(EditController* controller)
-: VST3Editor(controller, "view", "Motivatorator.uidesc") {
-    setController(this);
-}
+: VST3Editor(controller, "view", "Motivatorator.uidesc") {}
 
 VSTGUI::CView* MotivatoratorEditor::verifyView(VSTGUI::CView* view, const VSTGUI::UIAttributes& attributes,
-                                               const VSTGUI::IUIDescription*) {
+                                               const VSTGUI::IUIDescription* description) {
     std::string customName;
     if (attributes.getAttributeValue("custom-view-name", customName) && customName == "OptionsPanel") {
         if (auto* container = dynamic_cast<VSTGUI::CViewContainer*>(view)) {
@@ -19,12 +18,7 @@ VSTGUI::CView* MotivatoratorEditor::verifyView(VSTGUI::CView* view, const VSTGUI
             optionsPanel_->setMouseEnabled(false);
         }
     }
-    return view;
-}
-
-VSTGUI::IControlListener* MotivatoratorEditor::getControlListener(VSTGUI::UTF8StringPtr name) {
-    if (name && std::string(name) == "OptionsListener") return this;
-    return nullptr;
+    return VST3Editor::verifyView(view, attributes, description);
 }
 
 void MotivatoratorEditor::showOptions(bool show) {
@@ -38,7 +32,15 @@ void MotivatoratorEditor::showOptions(bool show) {
 
 void MotivatoratorEditor::valueChanged(VSTGUI::CControl* control) {
     if (!control) return;
-    showOptions(!optionsVisible_);
+
+    if (control->getTag() == static_cast<int32>(kOptionsId)) {
+        const bool down = control->getValue() >= 0.5f;
+        if (down && !optionsButtonDown_) showOptions(!optionsVisible_);
+        optionsButtonDown_ = down;
+        return;
+    }
+
+    VST3Editor::valueChanged(control);
 }
 
 } // namespace Steinberg::Vst
