@@ -28,6 +28,8 @@ public:
     tresult PLUGIN_API setupProcessing(ProcessSetup& setup) SMTG_OVERRIDE;
     tresult PLUGIN_API process(ProcessData& data) SMTG_OVERRIDE;
     tresult PLUGIN_API canProcessSampleSize(int32 symbolicSampleSize) SMTG_OVERRIDE;
+    tresult PLUGIN_API setState(IBStream* state) SMTG_OVERRIDE;
+    tresult PLUGIN_API getState(IBStream* state) SMTG_OVERRIDE;
     static FUnknown* createInstance(void*) { return static_cast<IAudioProcessor*>(new MotivatoratorProcessor()); }
 
 private:
@@ -41,6 +43,7 @@ private:
     int mode_ {0};
     int language_ {0};
     int interval_ {2};
+    int character_ {0};
     bool muted_ {false};
     bool nextState_ {false};
     bool mixedNextPositive_ {true};
@@ -60,6 +63,7 @@ private:
 class MotivatoratorController final : public EditControllerEx1 {
 public:
     tresult PLUGIN_API initialize(FUnknown* context) SMTG_OVERRIDE;
+    tresult PLUGIN_API setComponentState(IBStream* state) SMTG_OVERRIDE;
     IPlugView* PLUGIN_API createView(FIDString name) SMTG_OVERRIDE;
     static FUnknown* createInstance(void*) { return static_cast<IEditController*>(new MotivatoratorController()); }
 };
