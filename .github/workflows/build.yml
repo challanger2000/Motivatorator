@@ -1,0 +1,43 @@
+name: Build Windows VST3
+
+on:
+  workflow_dispatch:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DSMTG_CREATE_PLUGIN_LINK=0 -DSMTG_CREATE_BUNDLE_FOR_WINDOWS=1
+
+      - name: Build Motivatorator
+        shell: pwsh
+        run: cmake --build build --config Release --target Motivatorator --parallel
+
+      - name: Locate Motivatorator VST3 bundle
+        shell: pwsh
+        run: |
+          $root = "$env:GITHUB_WORKSPACE\build"
+          $artifact = "$env:GITHUB_WORKSPACE\artifact"
+          New-Item -ItemType Directory -Force -Path $artifact | Out-Null
+          $bundles = Get-ChildItem $root -Recurse -Directory -Filter "Motivatorator.vst3" -ErrorAction SilentlyContinue
+          $p = $bundles | Where-Object { Test-Path (Join-Path $_.FullName "Contents") } | Select-Object -First 1
+          if (-not $p) { throw "Motivatorator.vst3 bundle not found" }
+          Write-Host "VST3 bundle: $($p.FullName)"
+          Copy-Item $p.FullName "$artifact\Motivatorator.vst3" -Recurse -Force
+
+      - name: Upload Motivatorator VST3 bundle
+        uses: actions/upload-artifact@v5
+        with:
+          name: Motivatorator-Windows-VST3
+          path: artifact
+          if-no-files-found: error
