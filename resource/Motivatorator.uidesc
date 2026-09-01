@@ -3,6 +3,7 @@
   <control-tags>
     <control-tag name="mode" tag="100"/>
     <control-tag name="mute" tag="102"/>
+    <control-tag name="options" tag="103"/>
     <control-tag name="language" tag="104"/>
     <control-tag name="interval" tag="105"/>
     <control-tag name="character" tag="106"/>
@@ -29,35 +30,39 @@
   </colors>
 
   <template name="view" class="CViewContainer" size="760,430" background-color="room">
-    <!-- Studio wall / visual frame. Final bitmap art will replace these constructed surfaces. -->
     <view class="CViewContainer" origin="8,8" size="744,414" background-color="wood">
       <view class="CViewContainer" origin="10,10" size="724,394" background-color="room">
-
         <view class="CTextLabel" origin="22,12" size="310,34" title="MOTIVATORATOR" font="brand" font-color="amber" transparent="true"/>
         <view class="CTextLabel" origin="335,20" size="360,18" title="YOUR COMPLETELY UNNECESSARY STUDIO COMPANION" font="small" font-color="muted" transparent="true" text-alignment="right"/>
 
-        <!-- Character stage: deliberately large, artwork follows after layout is proven. -->
         <view class="CViewContainer" origin="22,58" size="214,286" background-color="metalDark">
           <view class="CTextLabel" origin="12,28" size="190,92" title="^_^" font="face" font-color="amber" transparent="true" text-alignment="center"/>
           <view class="CParamDisplay" origin="24,132" size="166,38" control-tag="character" font="option" font-color="cream" back-color="metal" frame-color="amber" frame-width="1" text-alignment="center"/>
           <view class="CTextLabel" origin="18,190" size="178,50" title="CHARACTER ART\nGOES HERE" font="small" font-color="muted" transparent="true" text-alignment="center"/>
         </view>
 
-        <!-- CRT body -->
         <view class="CViewContainer" origin="258,58" size="442,286" background-color="metal">
           <view class="CViewContainer" origin="15,15" size="412,214" background-color="metalDark">
             <view class="CParamDisplay" origin="14,14" size="384,186" control-tag="phrase" font="screen" font-color="screenGlow" back-color="screenGlass" frame-color="black" frame-width="3" text-alignment="center"/>
           </view>
           <view class="CTextLabel" origin="20,238" size="238,24" title="STUDIO COMMENT MONITOR" font="small" font-color="cream" transparent="true"/>
-          <view class="CTextLabel" origin="330,237" size="78,24" title="OPTIONS" font="small" font-color="amber" transparent="true" text-alignment="right"/>
+          <view class="CTextButton" origin="318,235" size="96,28" title="OPTIONS" control-tag="options" font="small" font-color="amber" back-color="metalDark" frame-color="amber"/>
         </view>
 
-        <!-- Options live unobtrusively below the scene for now; next step is a true second page. -->
-        <view class="CViewContainer" origin="22,356" size="678,30" background-color="metalDark">
-          <view class="COptionMenu" origin="8,3" size="155,24" control-tag="mode" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
-          <view class="COptionMenu" origin="171,3" size="155,24" control-tag="character" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
-          <view class="COptionMenu" origin="334,3" size="155,24" control-tag="language" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
-          <view class="COptionMenu" origin="497,3" size="173,24" control-tag="interval" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
+        <!-- Options panel is normally covered by the main scene. The controller toggles visibility. -->
+        <view class="CViewContainer" origin="22,58" size="678,286" background-color="metalDark" custom-view-name="OptionsPanel">
+          <view class="CTextLabel" origin="22,16" size="300,30" title="OPTIONS" font="brand" font-color="amber" transparent="true"/>
+          <view class="CTextLabel" origin="22,62" size="120,20" title="MODE" font="small" font-color="muted" transparent="true"/>
+          <view class="COptionMenu" origin="150,56" size="210,32" control-tag="mode" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
+          <view class="CTextLabel" origin="22,106" size="120,20" title="CHARACTER" font="small" font-color="muted" transparent="true"/>
+          <view class="COptionMenu" origin="150,100" size="210,32" control-tag="character" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
+          <view class="CTextLabel" origin="22,150" size="120,20" title="LANGUAGE" font="small" font-color="muted" transparent="true"/>
+          <view class="COptionMenu" origin="150,144" size="210,32" control-tag="language" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
+          <view class="CTextLabel" origin="22,194" size="120,20" title="INTERVAL" font="small" font-color="muted" transparent="true"/>
+          <view class="COptionMenu" origin="150,188" size="210,32" control-tag="interval" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
+          <view class="CTextLabel" origin="400,62" size="100,20" title="SILENCE" font="small" font-color="muted" transparent="true"/>
+          <view class="CTextButton" origin="500,56" size="140,32" title="MUTE ME" control-tag="mute" font="option" font-color="cream" back-color="metal" frame-color="amber"/>
+          <view class="CTextButton" origin="500,230" size="140,34" title="BACK" control-tag="options" font="option" font-color="amber" back-color="metal" frame-color="amber"/>
         </view>
       </view>
     </view>
