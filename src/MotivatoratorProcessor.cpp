@@ -1,6 +1,7 @@
 #include "MotivatoratorProcessor.h"
 #include "PhraseBank.h"
 #include "pluginterfaces/vst/ivstaudioprocessor.h"
+#include "pluginterfaces/vst/ivstparameterchanges.h"
 #include "vstgui/plugin-bindings/vst3editor.h"
 #include <algorithm>
 #include <cstring>
@@ -12,7 +13,6 @@ using namespace MotivatoratorPhrases;
 namespace {
 constexpr int kModeMotivator = 0;
 constexpr int kModeDemotivator = 1;
-constexpr int kModeMixed = 2;
 
 inline int normalizedToIndex(ParamValue value, int count) {
     if (count <= 1) return 0;
