@@ -2,6 +2,7 @@
 #include "MotivatoratorProcessor.h"
 #include "vstgui/lib/cviewcontainer.h"
 #include "vstgui/lib/controls/ccontrol.h"
+#include <cstring>
 
 namespace Steinberg::Vst {
 
@@ -11,10 +12,10 @@ MotivatoratorEditor::MotivatoratorEditor(EditController* controller)
 }
 
 VSTGUI::CView* MotivatoratorEditor::verifyView(VSTGUI::CView* view, const VSTGUI::UIAttributes& attributes,
-                                               const VSTGUI::IUIDescription* description) {
-    if (auto* container = dynamic_cast<VSTGUI::CViewContainer*>(view)) {
-        VSTGUI::UTF8StringPtr customName = nullptr;
-        if (attributes.getAttributeValue("custom-view-name", customName) && customName && std::string(customName) == "OptionsPanel") {
+                                               const VSTGUI::IUIDescription*) {
+    std::string customName;
+    if (attributes.getAttributeValue("custom-view-name", customName) && customName == "OptionsPanel") {
+        if (auto* container = dynamic_cast<VSTGUI::CViewContainer*>(view)) {
             optionsPanel_ = container;
             optionsPanel_->setVisible(false);
             optionsPanel_->setMouseEnabled(false);
@@ -23,9 +24,7 @@ VSTGUI::CView* MotivatoratorEditor::verifyView(VSTGUI::CView* view, const VSTGUI
     return view;
 }
 
-VSTGUI::IControlListener* MotivatoratorEditor::getControlListener(VSTGUI::UTF8StringPtr) {
-    return this;
-}
+VSTGUI::IControlListener* MotivatoratorEditor::getControlListener(VSTGUI::UTF8StringPtr) { return this; }
 
 void MotivatoratorEditor::showOptions(bool show) {
     optionsVisible_ = show;
