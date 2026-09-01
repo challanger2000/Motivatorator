@@ -10,12 +10,13 @@ MotivatoratorEditor::MotivatoratorEditor(EditController* controller)
 
 VSTGUI::CView* MotivatoratorEditor::verifyView(VSTGUI::CView* view, const VSTGUI::UIAttributes& attributes,
                                                const VSTGUI::IUIDescription* description) {
-    std::string customName;
-    if (attributes.getAttributeValue("custom-view-name", customName) && customName == "OptionsPanel") {
-        if (auto* container = dynamic_cast<VSTGUI::CViewContainer*>(view)) {
-            optionsPanel_ = container;
-            optionsPanel_->setVisible(false);
-            optionsPanel_->setMouseEnabled(false);
+    if (const auto* customName = attributes.getAttributeValue("custom-view-name")) {
+        if (*customName == "OptionsPanel") {
+            if (auto* container = dynamic_cast<VSTGUI::CViewContainer*>(view)) {
+                optionsPanel_ = container;
+                optionsPanel_->setVisible(false);
+                optionsPanel_->setMouseEnabled(false);
+            }
         }
     }
     return VST3Editor::verifyView(view, attributes, description);
