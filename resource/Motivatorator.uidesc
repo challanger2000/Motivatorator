@@ -2,58 +2,64 @@
 <vstgui-ui-description version="1">
   <control-tags>
     <control-tag name="mode" tag="100"/>
-    <control-tag name="next" tag="101"/>
     <control-tag name="mute" tag="102"/>
     <control-tag name="language" tag="104"/>
     <control-tag name="interval" tag="105"/>
     <control-tag name="character" tag="106"/>
     <control-tag name="phrase" tag="107"/>
-    <control-tag name="tone" tag="108"/>
   </control-tags>
-
   <fonts>
-    <font name="title" font-name="Arial" size="28" bold="true"/>
-    <font name="quote" font-name="Arial" size="18" bold="true"/>
-    <font name="button" font-name="Arial" size="13" bold="true"/>
-    <font name="tiny" font-name="Arial" size="10"/>
-    <font name="face" font-name="Arial" size="38" bold="true"/>
-    <font name="name" font-name="Arial" size="17" bold="true"/>
+    <font name="brand" font-name="Arial" size="24" bold="true"/>
+    <font name="screen" font-name="Arial" size="21" bold="true"/>
+    <font name="small" font-name="Arial" size="11" bold="true"/>
+    <font name="option" font-name="Arial" size="13" bold="true"/>
+    <font name="face" font-name="Arial" size="48" bold="true"/>
   </fonts>
-
   <colors>
-    <color name="bg" rgba="#121419ff"/>
-    <color name="panel" rgba="#20242cff"/>
-    <color name="panel2" rgba="#292e38ff"/>
-    <color name="text" rgba="#f5f5f5ff"/>
-    <color name="muted" rgba="#9fa7b5ff"/>
-    <color name="buttonbg" rgba="#303641ff"/>
-    <color name="mixed" rgba="#f0b84bff"/>
+    <color name="room" rgba="#171512ff"/>
+    <color name="wood" rgba="#302820ff"/>
+    <color name="metal" rgba="#403c34ff"/>
+    <color name="metalDark" rgba="#24231fff"/>
+    <color name="screenGlass" rgba="#07120dff"/>
+    <color name="screenGlow" rgba="#79f2a6ff"/>
+    <color name="cream" rgba="#e7dfc8ff"/>
+    <color name="amber" rgba="#e4a84cff"/>
+    <color name="muted" rgba="#aaa38fff"/>
+    <color name="black" rgba="#080808ff"/>
   </colors>
 
-  <template name="view" class="CViewContainer" size="700,430" background-color="bg">
-    <view class="CTextLabel" origin="20,12" size="660,42" title="MOTIVATORATOR" font="title" font-color="mixed" transparent="true" text-alignment="center"/>
+  <template name="view" class="CViewContainer" size="760,430" background-color="room">
+    <!-- Studio wall / visual frame. Final bitmap art will replace these constructed surfaces. -->
+    <view class="CViewContainer" origin="8,8" size="744,414" background-color="wood">
+      <view class="CViewContainer" origin="10,10" size="724,394" background-color="room">
 
-    <view class="CViewContainer" origin="20,68" size="190,176" background-color="panel">
-      <view class="CTextLabel" origin="12,18" size="166,60" title="^_^" font="face" font-color="mixed" transparent="true" text-alignment="center"/>
-      <view class="CParamDisplay" origin="18,88" size="154,34" control-tag="character" font="name" font-color="text" back-color="panel2" frame-color="mixed" frame-width="1" text-alignment="center"/>
-      <view class="CTextLabel" origin="12,132" size="166,24" title="YOUR STUDIO CREATURE" font="tiny" font-color="muted" transparent="true" text-alignment="center"/>
-    </view>
+        <view class="CTextLabel" origin="22,12" size="310,34" title="MOTIVATORATOR" font="brand" font-color="amber" transparent="true"/>
+        <view class="CTextLabel" origin="335,20" size="360,18" title="YOUR COMPLETELY UNNECESSARY STUDIO COMPANION" font="small" font-color="muted" transparent="true" text-alignment="right"/>
 
-    <view class="CTextLabel" origin="230,68" size="450,24" title="YOUR COMPLETELY UNNECESSARY STUDIO COMPANION" font="tiny" font-color="muted" transparent="true" text-alignment="center"/>
-    <view class="CParamDisplay" origin="230,100" size="450,144" control-tag="phrase" font="quote" font-color="text" back-color="panel2" frame-color="mixed" frame-width="1" text-alignment="center"/>
+        <!-- Character stage: deliberately large, artwork follows after layout is proven. -->
+        <view class="CViewContainer" origin="22,58" size="214,286" background-color="metalDark">
+          <view class="CTextLabel" origin="12,28" size="190,92" title="^_^" font="face" font-color="amber" transparent="true" text-alignment="center"/>
+          <view class="CParamDisplay" origin="24,132" size="166,38" control-tag="character" font="option" font-color="cream" back-color="metal" frame-color="amber" frame-width="1" text-alignment="center"/>
+          <view class="CTextLabel" origin="18,190" size="178,50" title="CHARACTER ART\nGOES HERE" font="small" font-color="muted" transparent="true" text-alignment="center"/>
+        </view>
 
-    <view class="CTextLabel" origin="20,260" size="100,18" title="MODE" font="tiny" font-color="muted" transparent="true"/>
-    <view class="COptionMenu" origin="20,282" size="190,34" control-tag="mode" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
-    <view class="CTextButton" origin="230,282" size="210,34" title="NEXT" control-tag="next" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" kick-style="true"/>
-    <view class="CTextButton" origin="460,282" size="220,34" title="MUTE ME" control-tag="mute" font="button" font-color="text" back-color="buttonbg" frame-color="mixed"/>
+        <!-- CRT body -->
+        <view class="CViewContainer" origin="258,58" size="442,286" background-color="metal">
+          <view class="CViewContainer" origin="15,15" size="412,214" background-color="metalDark">
+            <view class="CParamDisplay" origin="14,14" size="384,186" control-tag="phrase" font="screen" font-color="screenGlow" back-color="screenGlass" frame-color="black" frame-width="3" text-alignment="center"/>
+          </view>
+          <view class="CTextLabel" origin="20,238" size="238,24" title="STUDIO COMMENT MONITOR" font="small" font-color="cream" transparent="true"/>
+          <view class="CTextLabel" origin="330,237" size="78,24" title="OPTIONS" font="small" font-color="amber" transparent="true" text-alignment="right"/>
+        </view>
 
-    <view class="CViewContainer" origin="20,334" size="660,74" background-color="panel">
-      <view class="CTextLabel" origin="12,8" size="84,18" title="CHARACTER" font="tiny" font-color="muted" transparent="true"/>
-      <view class="COptionMenu" origin="12,30" size="190,30" control-tag="character" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
-      <view class="CTextLabel" origin="224,8" size="84,18" title="LANGUAGE" font="tiny" font-color="muted" transparent="true"/>
-      <view class="COptionMenu" origin="224,30" size="190,30" control-tag="language" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
-      <view class="CTextLabel" origin="436,8" size="84,18" title="INTERVAL" font="tiny" font-color="muted" transparent="true"/>
-      <view class="COptionMenu" origin="436,30" size="212,30" control-tag="interval" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
+        <!-- Options live unobtrusively below the scene for now; next step is a true second page. -->
+        <view class="CViewContainer" origin="22,356" size="678,30" background-color="metalDark">
+          <view class="COptionMenu" origin="8,3" size="155,24" control-tag="mode" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
+          <view class="COptionMenu" origin="171,3" size="155,24" control-tag="character" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
+          <view class="COptionMenu" origin="334,3" size="155,24" control-tag="language" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
+          <view class="COptionMenu" origin="497,3" size="173,24" control-tag="interval" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
+        </view>
+      </view>
     </view>
   </template>
 </vstgui-ui-description>
