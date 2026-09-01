@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <vstgui-ui-description version="1">
+  <bitmaps>
+    <bitmap name="gnomi" path="gnomi.png"/>
+  </bitmaps>
   <control-tags>
     <control-tag name="mode" tag="100"/><control-tag name="mute" tag="102"/><control-tag name="options" tag="103"/><control-tag name="language" tag="104"/><control-tag name="interval" tag="105"/><control-tag name="character" tag="106"/><control-tag name="phrase" tag="107"/>
   </control-tags>
   <fonts>
-    <font name="brand" font-name="Arial" size="24" bold="true"/><font name="screen" font-name="Arial" size="21" bold="true"/><font name="small" font-name="Arial" size="11" bold="true"/><font name="option" font-name="Arial" size="13" bold="true"/><font name="face" font-name="Arial" size="54" bold="true"/>
+    <font name="brand" font-name="Arial" size="24" bold="true"/><font name="screen" font-name="Arial" size="21" bold="true"/><font name="small" font-name="Arial" size="11" bold="true"/><font name="option" font-name="Arial" size="13" bold="true"/>
   </fonts>
   <colors>
     <color name="room" rgba="#171512ff"/><color name="wood" rgba="#302820ff"/><color name="metal" rgba="#403c34ff"/><color name="metalDark" rgba="#24231fff"/><color name="screenGlass" rgba="#07120dff"/><color name="screenGlow" rgba="#79f2a6ff"/><color name="cream" rgba="#e7dfc8ff"/><color name="amber" rgba="#e4a84cff"/><color name="muted" rgba="#aaa38fff"/><color name="black" rgba="#080808ff"/>
@@ -15,9 +18,8 @@
       <view class="CTextLabel" origin="430,18" size="265,18" title="STUDIO MOTIVATION ENGINE" font="small" font-color="muted" transparent="true" text-alignment="right"/>
 
       <view class="CViewContainer" origin="22,54" size="214,316" background-color="metalDark">
-        <view class="CTextLabel" origin="12,54" size="190,100" title="^_^" font="face" font-color="amber" transparent="true" text-alignment="center"/>
-        <view class="CParamDisplay" origin="24,188" size="166,38" control-tag="character" font="option" font-color="cream" back-color="metal" frame-color="amber" frame-width="1" text-alignment="center"/>
-        <view class="CTextLabel" origin="18,246" size="178,42" title="CHARACTER ART\nCOMING NEXT" font="small" font-color="muted" transparent="true" text-alignment="center"/>
+        <view class="CView" origin="22,18" size="170,275" bitmap="gnomi" transparent="true"/>
+        <view class="CParamDisplay" origin="24,276" size="166,28" control-tag="character" font="option" font-color="cream" back-color="metal" frame-color="amber" frame-width="1" text-alignment="center"/>
       </view>
 
       <view class="CViewContainer" origin="250,54" size="450,316" background-color="metal">
