@@ -20,8 +20,20 @@ jobs:
         run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DSMTG_CREATE_PLUGIN_LINK=0 -DSMTG_CREATE_BUNDLE_FOR_WINDOWS=1
 
       - name: Build Motivatorator
+        id: build_step
         shell: pwsh
-        run: cmake --build build --config Release --target Motivatorator --parallel
+        run: |
+          cmake --build build --config Release --target Motivatorator --parallel 2>&1 | Tee-Object -FilePath build-log.txt
+          $code = $LASTEXITCODE
+          if ($code -ne 0) { exit $code }
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: Motivatorator-Build-Log
+          path: build-log.txt
+          if-no-files-found: warn
 
       - name: Locate Motivatorator VST3 bundle
         shell: pwsh
