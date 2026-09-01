@@ -2,6 +2,7 @@
 
 #include "vstgui/plugin-bindings/vst3editor.h"
 #include "vstgui/uidescription/icontroller.h"
+#include "vstgui/lib/cviewcontainer.h"
 
 namespace Steinberg::Vst {
 
