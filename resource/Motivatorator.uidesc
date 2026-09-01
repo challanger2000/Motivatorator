@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vstgui-ui-description version="1">
+  <fonts>
+    <font name="title" font-name="Arial" size="28" bold="true"/>
+    <font name="quote" font-name="Arial" size="20" bold="true"/>
+    <font name="button" font-name="Arial" size="13" bold="true"/>
+  </fonts>
+  <colors>
+    <color name="bg" rgba="#17191eff"/>
+    <color name="panel" rgba="#242832ff"/>
+    <color name="text" rgba="#f4f4f4ff"/>
+    <color name="accent" rgba="#f0b84bff"/>
+    <color name="buttonbg" rgba="#343a46ff"/>
+  </colors>
+  <template name="view" class="CViewContainer" size="620,360" background-color="bg">
+    <view class="CTextLabel" origin="20,16" size="580,42" title="MOTIVATORATOR" font="title" font-color="accent" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="40,72" size="540,130" title="Making music should be fun." font="quote" font-color="text" back-color="panel" frame-color="accent" frame-width="1" text-alignment="center"/>
+    <view class="CTextLabel" origin="55,224" size="510,28" title="MOTIVATE        DEMOTIVATE        MIXED" font="button" font-color="text" transparent="true" text-alignment="center"/>
+    <view class="COptionMenu" origin="180,258" size="260,32" control-tag="100" font="button" font-color="text" back-color="buttonbg" frame-color="accent"/>
+    <view class="CTextButton" origin="170,304" size="130,34" title="NEXT" control-tag="101" font="button" font-color="text" back-color="buttonbg" frame-color="accent"/>
+    <view class="CTextButton" origin="320,304" size="130,34" title="MUTE ME" control-tag="102" font="button" font-color="text" back-color="buttonbg" frame-color="accent"/>
+    <view class="CTextButton" origin="548,18" size="52,28" title="OPT" control-tag="103" font="button" font-color="text" back-color="buttonbg" frame-color="accent"/>
+  </template>
+</vstgui-ui-description>
