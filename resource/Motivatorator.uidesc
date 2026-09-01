@@ -3,6 +3,7 @@
   <control-tags>
     <control-tag name="mode" tag="100"/>
     <control-tag name="mute" tag="102"/>
+    <control-tag name="options" tag="103"/>
     <control-tag name="language" tag="104"/>
     <control-tag name="interval" tag="105"/>
     <control-tag name="character" tag="106"/>
@@ -32,7 +33,7 @@
       <view class="CViewContainer" origin="258,58" size="442,286" background-color="metal">
         <view class="CViewContainer" origin="15,15" size="412,214" background-color="metalDark"><view class="CParamDisplay" origin="14,14" size="384,186" control-tag="phrase" font="screen" font-color="screenGlow" back-color="screenGlass" frame-color="black" frame-width="3" text-alignment="center"/></view>
         <view class="CTextLabel" origin="20,238" size="238,24" title="STUDIO COMMENT MONITOR" font="small" font-color="cream" transparent="true"/>
-        <view class="CTextButton" origin="318,235" size="96,28" title="OPTIONS" font="small" font-color="amber" back-color="metalDark" frame-color="amber" listener="OptionsListener" kick-style="true"/>
+        <view class="CTextButton" origin="318,235" size="96,28" title="OPTIONS" control-tag="options" font="small" font-color="amber" back-color="metalDark" frame-color="amber" kick-style="true"/>
       </view>
       <view class="CViewContainer" origin="22,58" size="678,286" background-color="metalDark" custom-view-name="OptionsPanel">
         <view class="CTextLabel" origin="22,16" size="300,30" title="OPTIONS" font="brand" font-color="amber" transparent="true"/>
@@ -41,7 +42,7 @@
         <view class="CTextLabel" origin="22,150" size="120,20" title="LANGUAGE" font="small" font-color="muted" transparent="true"/><view class="COptionMenu" origin="150,144" size="210,32" control-tag="language" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
         <view class="CTextLabel" origin="22,194" size="120,20" title="INTERVAL" font="small" font-color="muted" transparent="true"/><view class="COptionMenu" origin="150,188" size="210,32" control-tag="interval" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
         <view class="CTextLabel" origin="400,62" size="100,20" title="SILENCE" font="small" font-color="muted" transparent="true"/><view class="CTextButton" origin="500,56" size="140,32" title="MUTE ME" control-tag="mute" font="option" font-color="cream" back-color="metal" frame-color="amber"/>
-        <view class="CTextButton" origin="500,230" size="140,34" title="BACK" font="option" font-color="amber" back-color="metal" frame-color="amber" listener="OptionsListener" kick-style="true"/>
+        <view class="CTextButton" origin="500,230" size="140,34" title="BACK" control-tag="options" font="option" font-color="amber" back-color="metal" frame-color="amber" kick-style="true"/>
       </view>
     </view></view>
   </template>
