@@ -1,24 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <vstgui-ui-description version="1">
+  <control-tags>
+    <control-tag name="mode" tag="100"/>
+    <control-tag name="next" tag="101"/>
+    <control-tag name="mute" tag="102"/>
+    <control-tag name="options" tag="103"/>
+    <control-tag name="language" tag="104"/>
+    <control-tag name="interval" tag="105"/>
+  </control-tags>
+
   <fonts>
     <font name="title" font-name="Arial" size="28" bold="true"/>
+    <font name="mode" font-name="Arial" size="15" bold="true"/>
     <font name="quote" font-name="Arial" size="20" bold="true"/>
     <font name="button" font-name="Arial" size="13" bold="true"/>
+    <font name="tiny" font-name="Arial" size="10" bold="false"/>
   </fonts>
+
   <colors>
-    <color name="bg" rgba="#17191eff"/>
-    <color name="panel" rgba="#242832ff"/>
+    <color name="bg" rgba="#15171cff"/>
     <color name="text" rgba="#f4f4f4ff"/>
-    <color name="accent" rgba="#f0b84bff"/>
-    <color name="buttonbg" rgba="#343a46ff"/>
+    <color name="muted" rgba="#aab0bcff"/>
+    <color name="buttonbg" rgba="#303641ff"/>
+    <color name="motivate" rgba="#39d98aff"/>
+    <color name="motivatebg" rgba="#172923ff"/>
+    <color name="demotivate" rgba="#ff5c5cff"/>
+    <color name="demotivatebg" rgba="#2b181aff"/>
+    <color name="mixed" rgba="#f0b84bff"/>
+    <color name="mixedbg" rgba="#292319ff"/>
   </colors>
+
+  <template name="MotivatorTheme" class="CViewContainer" size="540,150" background-color="motivatebg">
+    <view class="CTextLabel" origin="12,10" size="516,24" title="MOTIVATOR // YOU'VE GOT THIS" font="mode" font-color="motivate" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="18,44" size="504,88" title="Nicht anfassen! Genau so lassen!" font="quote" font-color="text" back-color="motivatebg" frame-color="motivate" frame-width="1" text-alignment="center"/>
+  </template>
+
+  <template name="DemotivatorTheme" class="CViewContainer" size="540,150" background-color="demotivatebg">
+    <view class="CTextLabel" origin="12,10" size="516,24" title="DEMOTIVATOR // JUDGING YOUR MIX..." font="mode" font-color="demotivate" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="18,44" size="504,88" title="Noch ein EQ. Bestimmt liegt es diesmal daran." font="quote" font-color="text" back-color="demotivatebg" frame-color="demotivate" frame-width="1" text-alignment="center"/>
+  </template>
+
+  <template name="MixedTheme" class="CViewContainer" size="540,150" background-color="mixedbg">
+    <view class="CTextLabel" origin="12,10" size="516,24" title="MIXED // EMOTIONAL DAMAGE MAY VARY" font="mode" font-color="mixed" transparent="true" text-alignment="center"/>
+    <view class="CTextLabel" origin="18,44" size="504,88" title="Heute Lob. Morgen Anzeige." font="quote" font-color="text" back-color="mixedbg" frame-color="mixed" frame-width="1" text-alignment="center"/>
+  </template>
+
   <template name="view" class="CViewContainer" size="620,360" background-color="bg">
-    <view class="CTextLabel" origin="20,16" size="580,42" title="MOTIVATORATOR" font="title" font-color="accent" transparent="true" text-alignment="center"/>
-    <view class="CTextLabel" origin="40,72" size="540,130" title="Making music should be fun." font="quote" font-color="text" back-color="panel" frame-color="accent" frame-width="1" text-alignment="center"/>
-    <view class="CTextLabel" origin="55,224" size="510,28" title="MOTIVATE        DEMOTIVATE        MIXED" font="button" font-color="text" transparent="true" text-alignment="center"/>
-    <view class="COptionMenu" origin="180,258" size="260,32" control-tag="100" font="button" font-color="text" back-color="buttonbg" frame-color="accent"/>
-    <view class="CTextButton" origin="170,304" size="130,34" title="NEXT" control-tag="101" font="button" font-color="text" back-color="buttonbg" frame-color="accent"/>
-    <view class="CTextButton" origin="320,304" size="130,34" title="MUTE ME" control-tag="102" font="button" font-color="text" back-color="buttonbg" frame-color="accent"/>
-    <view class="CTextButton" origin="548,18" size="52,28" title="OPT" control-tag="103" font="button" font-color="text" back-color="buttonbg" frame-color="accent"/>
+    <view class="CTextLabel" origin="20,14" size="580,42" title="MOTIVATORATOR" font="title" font-color="mixed" transparent="true" text-alignment="center"/>
+    <view class="CTextButton" origin="542,18" size="58,28" title="OPTIONS" control-tag="options" font="tiny" font-color="text" back-color="buttonbg" frame-color="mixed"/>
+
+    <view class="UIViewSwitchContainer" origin="40,66" size="540,150" template-names="MotivatorTheme,DemotivatorTheme,MixedTheme" template-switch-control="mode" animation-time="0"/>
+
+    <view class="CTextLabel" origin="55,226" size="510,22" title="MODE" font="tiny" font-color="muted" transparent="true" text-alignment="center"/>
+    <view class="COptionMenu" origin="180,250" size="260,34" control-tag="mode" font="button" font-color="text" back-color="buttonbg" frame-color="mixed" menu-check-style="true"/>
+
+    <view class="CTextButton" origin="165,302" size="140,36" title="NEXT" control-tag="next" font="button" font-color="text" back-color="buttonbg" frame-color="mixed"/>
+    <view class="CTextButton" origin="315,302" size="140,36" title="MUTE ME" control-tag="mute" font="button" font-color="text" back-color="buttonbg" frame-color="mixed"/>
   </template>
 </vstgui-ui-description>
