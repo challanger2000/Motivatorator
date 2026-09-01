@@ -31,7 +31,11 @@
         <view class="CTextLabel" origin="18,190" size="178,50" title="CHARACTER ART\nGOES HERE" font="small" font-color="muted" transparent="true" text-alignment="center"/>
       </view>
       <view class="CViewContainer" origin="258,58" size="442,286" background-color="metal">
-        <view class="CViewContainer" origin="15,15" size="412,214" background-color="metalDark"><view class="CParamDisplay" origin="14,14" size="384,186" control-tag="phrase" font="screen" font-color="screenGlow" back-color="screenGlass" frame-color="black" frame-width="3" text-alignment="center"/></view>
+        <view class="CViewContainer" origin="15,15" size="412,214" background-color="metalDark">
+          <view class="CViewContainer" origin="14,14" size="384,186" background-color="screenGlass">
+            <view class="CParamDisplay" origin="384,0" size="500,186" control-tag="phrase" custom-view-name="PhraseTicker" font="screen" font-color="screenGlow" transparent="true" text-alignment="left"/>
+          </view>
+        </view>
         <view class="CTextLabel" origin="20,238" size="238,24" title="STUDIO COMMENT MONITOR" font="small" font-color="cream" transparent="true"/>
         <view class="CTextButton" origin="318,235" size="96,28" title="OPTIONS" control-tag="options" font="small" font-color="amber" back-color="metalDark" frame-color="amber" kick-style="true"/>
       </view>
