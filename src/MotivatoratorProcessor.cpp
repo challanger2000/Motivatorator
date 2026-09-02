@@ -6,6 +6,7 @@
 #include "pluginterfaces/vst/ivstparameterchanges.h"
 #include "base/source/fstreamer.h"
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 namespace Steinberg::Vst {
@@ -17,6 +18,7 @@ constexpr int kModeMotivator = 0;
 constexpr int kModeDemotivator = 1;
 constexpr int kModeMixed = 2;
 constexpr int32 kStateVersion = 1;
+constexpr double kPi = 3.14159265358979323846;
 
 int normalizedToIndex(ParamValue v, int count) {
     return std::clamp(static_cast<int>(v * count), 0, count - 1);
@@ -35,6 +37,9 @@ tresult PLUGIN_API MotivatoratorProcessor::initialize(FUnknown* context) {
 
 tresult PLUGIN_API MotivatoratorProcessor::setupProcessing(ProcessSetup& setup) {
     sampleRate_ = setup.sampleRate > 1.0 ? setup.sampleRate : 44100.0;
+    pingSamplesRemaining_ = 0;
+    pingSamplesTotal_ = 0;
+    pingPhase_ = 0.0;
     return AudioEffect::setupProcessing(setup);
 }
 
@@ -50,6 +55,8 @@ tresult PLUGIN_API MotivatoratorProcessor::getState(IBStream* state) {
     stream.writeInt32(phrasePositive_ ? 1 : 0); stream.writeInt32(motivatorPos_); stream.writeInt32(demotivatorPos_);
     stream.writeInt32(motivatorStart_); stream.writeInt32(demotivatorStart_); stream.writeInt32(motivatorStep_); stream.writeInt32(demotivatorStep_);
     stream.writeInt32(currentPhraseGlobal_);
+    stream.writeInt32(messageSound_ ? 1 : 0);
+    stream.writeDouble(pingVolume_);
     return kResultOk;
 }
 
@@ -71,6 +78,12 @@ tresult PLUGIN_API MotivatoratorProcessor::setState(IBStream* state) {
     if (!stream.readInt32(value)) return kResultFalse; motivatorStep_=(value==53)?53:37;
     if (!stream.readInt32(value)) return kResultFalse; demotivatorStep_=(value==37)?37:53;
     if (!stream.readInt32(value)) return kResultFalse; currentPhraseGlobal_=std::clamp(value,0,(int)(kPhraseCount*2)-1);
+    // The two sound fields were appended to state v1. Old projects simply end here
+    // and keep the new defaults (sound on, 50% volume).
+    int32 soundValue=1;
+    if (stream.readInt32(soundValue)) messageSound_=soundValue!=0;
+    double volumeValue=0.5;
+    if (stream.readDouble(volumeValue)) pingVolume_=std::clamp(volumeValue,0.0,1.0);
     nextState_=false; needsPhraseEmit_=true; resetIntervalCounter(); return kResultOk;
 }
 
@@ -85,6 +98,8 @@ void MotivatoratorProcessor::handleParameters(ProcessData& data) {
             case kIntervalId:{int n=normalizedToIndex(value,6);if(n!=interval_){interval_=n;resetIntervalCounter();}}break;
             case kCharacterId: character_=normalizedToIndex(value,3); break;
             case kMuteId: muted_=value>=0.5; break;
+            case kMessageSoundId: messageSound_=value>=0.5; if(!messageSound_) pingSamplesRemaining_=0; break;
+            case kPingVolumeId: pingVolume_=std::clamp(value,0.0,1.0); break;
             case kNextId:{bool s=value>=0.5;if(s&&!nextState_){chooseNextPhrase();needsPhraseEmit_=true;resetIntervalCounter();}nextState_=s;}break;
             default: break;
         }
@@ -101,8 +116,6 @@ void MotivatoratorProcessor::chooseNextPhrase(){
     if(mode_==kModeMotivator) phrasePositive_=true;
     else if(mode_==kModeDemotivator) phrasePositive_=false;
     else {
-        // MIXED is intentionally unconstrained: every comment gets an independent
-        // 50/50 tone decision. Consecutive positive or negative runs are allowed.
         mixedRandomState_ ^= mixedRandomState_ << 13;
         mixedRandomState_ ^= mixedRandomState_ >> 17;
         mixedRandomState_ ^= mixedRandomState_ << 5;
@@ -110,6 +123,7 @@ void MotivatoratorProcessor::chooseNextPhrase(){
     }
     const int local=nextDeckIndex(phrasePositive_); const int languageBase=language_==0?0:(int)kPhraseCount;
     const int toneBase=phrasePositive_?0:(int)kMotivatorCount; currentPhraseGlobal_=languageBase+toneBase+local;
+    triggerPing();
 }
 
 void MotivatoratorProcessor::emitPhrase(ProcessData& data){
@@ -124,12 +138,44 @@ void MotivatoratorProcessor::resetIntervalCounter(){
     samplesUntilNext_=std::max<int64>(1,(int64)(sampleRate_*sec));
 }
 
+void MotivatoratorProcessor::triggerPing(){
+    if(!messageSound_ || pingVolume_<=0.0) return;
+    pingSamplesTotal_=std::max<int64>(1,(int64)(sampleRate_*0.09));
+    pingSamplesRemaining_=pingSamplesTotal_;
+    pingPhase_=0.0;
+}
+
+void MotivatoratorProcessor::mixPing(ProcessData& data){
+    if(!messageSound_ || pingSamplesRemaining_<=0 || data.numOutputs<=0 || data.numSamples<=0) return;
+    auto& out=data.outputs[0];
+    const int64 startRemaining=pingSamplesRemaining_;
+    const int32 count=std::min<int64>(data.numSamples,startRemaining);
+    const double phaseInc=2.0*kPi*1650.0/sampleRate_;
+    const double baseGain=0.22*pingVolume_;
+    for(int32 i=0;i<count;++i){
+        const double progress=1.0-(double)pingSamplesRemaining_/(double)pingSamplesTotal_;
+        const double attack=std::min(1.0,progress/0.025);
+        const double decay=std::exp(-5.5*progress);
+        const double sample=std::sin(pingPhase_)*baseGain*attack*decay;
+        if(data.symbolicSampleSize==kSample32){
+            for(int32 c=0;c<out.numChannels;++c) if(out.channelBuffers32[c]) out.channelBuffers32[c][i]+=static_cast<float>(sample);
+        } else if(data.symbolicSampleSize==kSample64){
+            for(int32 c=0;c<out.numChannels;++c) if(out.channelBuffers64[c]) out.channelBuffers64[c][i]+=sample;
+        }
+        pingPhase_+=phaseInc; if(pingPhase_>=2.0*kPi) pingPhase_-=2.0*kPi;
+        --pingSamplesRemaining_;
+    }
+}
+
 tresult PLUGIN_API MotivatoratorProcessor::process(ProcessData& data){
     handleParameters(data);
     if(data.numInputs>0&&data.numOutputs>0){auto& in=data.inputs[0];auto& out=data.outputs[0];int ch=std::min(in.numChannels,out.numChannels);
         if(data.symbolicSampleSize==kSample32){for(int c=0;c<ch;++c)if(in.channelBuffers32[c]&&out.channelBuffers32[c])std::memcpy(out.channelBuffers32[c],in.channelBuffers32[c],sizeof(float)*data.numSamples);}
         else if(data.symbolicSampleSize==kSample64){for(int c=0;c<ch;++c)if(in.channelBuffers64[c]&&out.channelBuffers64[c])std::memcpy(out.channelBuffers64[c],in.channelBuffers64[c],sizeof(double)*data.numSamples);}}
-    if(needsPhraseEmit_)emitPhrase(data); if(!muted_&&data.numSamples>0){samplesUntilNext_-=data.numSamples;if(samplesUntilNext_<=0){chooseNextPhrase();emitPhrase(data);resetIntervalCounter();}} return kResultOk;
+    if(needsPhraseEmit_) emitPhrase(data);
+    if(!muted_&&data.numSamples>0){samplesUntilNext_-=data.numSamples;if(samplesUntilNext_<=0){chooseNextPhrase();emitPhrase(data);resetIntervalCounter();}}
+    mixPing(data);
+    return kResultOk;
 }
 
 tresult PLUGIN_API MotivatoratorController::initialize(FUnknown* context){
@@ -140,14 +186,20 @@ tresult PLUGIN_API MotivatoratorController::initialize(FUnknown* context){
     auto* interval=new StringListParameter(STR16("Interval"),kIntervalId);interval->appendString(STR16("5 sec"));interval->appendString(STR16("10 sec"));interval->appendString(STR16("15 sec"));interval->appendString(STR16("20 sec"));interval->appendString(STR16("25 sec"));interval->appendString(STR16("30 sec"));parameters.addParameter(interval);interval->setNormalized(0.4);
     auto* character=new StringListParameter(STR16("Character"),kCharacterId);character->appendString(STR16("GNOMI"));character->appendString(STR16("ROCKY"));character->appendString(STR16("D.O.M."));parameters.addParameter(character);
     parameters.addParameter(STR16("Phrase"),nullptr,(int32)(kPhraseCount*2-1),0.0,0,kPhraseId);
-    auto* tone=new StringListParameter(STR16("Phrase Tone"),kPhraseToneId);tone->appendString(STR16("POSITIVE"));tone->appendString(STR16("NEGATIVE"));parameters.addParameter(tone);return kResultOk;
+    auto* tone=new StringListParameter(STR16("Phrase Tone"),kPhraseToneId);tone->appendString(STR16("POSITIVE"));tone->appendString(STR16("NEGATIVE"));parameters.addParameter(tone);
+    parameters.addParameter(STR16("Message Sound"),nullptr,1,1.0,ParameterInfo::kCanAutomate,kMessageSoundId);
+    parameters.addParameter(STR16("Ping Volume"),STR16("%"),0,0.5,ParameterInfo::kCanAutomate,kPingVolumeId);
+    return kResultOk;
 }
 
 tresult PLUGIN_API MotivatoratorController::setComponentState(IBStream* state){
     if(!state)return kInvalidArgument;IBStreamer s(state,kLittleEndian);int32 version=0,mode=0,language=0,interval=2,character=0,muted=0,mixed=1,positive=1,skip=0,current=0;
     if(!s.readInt32(version)||version!=kStateVersion)return kResultFalse;if(!s.readInt32(mode)||!s.readInt32(language)||!s.readInt32(interval)||!s.readInt32(character)||!s.readInt32(muted)||!s.readInt32(mixed)||!s.readInt32(positive))return kResultFalse;
     for(int i=0;i<6;++i)if(!s.readInt32(skip))return kResultFalse;if(!s.readInt32(current))return kResultFalse;
-    setParamNormalized(kModeId,(double)std::clamp(mode,0,2)/2.0);setParamNormalized(kLanguageId,(double)std::clamp(language,0,1));setParamNormalized(kIntervalId,(double)std::clamp(interval,0,5)/5.0);setParamNormalized(kCharacterId,(double)std::clamp(character,0,2)/2.0);setParamNormalized(kMuteId,muted?1.0:0.0);setParamNormalized(kPhraseToneId,positive?0.0:1.0);setParamNormalized(kPhraseId,(double)std::clamp(current,0,(int)(kPhraseCount*2)-1)/((kPhraseCount*2)-1));return kResultOk;
+    setParamNormalized(kModeId,(double)std::clamp(mode,0,2)/2.0);setParamNormalized(kLanguageId,(double)std::clamp(language,0,1));setParamNormalized(kIntervalId,(double)std::clamp(interval,0,5)/5.0);setParamNormalized(kCharacterId,(double)std::clamp(character,0,2)/2.0);setParamNormalized(kMuteId,muted?1.0:0.0);setParamNormalized(kPhraseToneId,positive?0.0:1.0);setParamNormalized(kPhraseId,(double)std::clamp(current,0,(int)(kPhraseCount*2)-1)/((kPhraseCount*2)-1));
+    int32 sound=1; if(s.readInt32(sound)) setParamNormalized(kMessageSoundId,sound?1.0:0.0);
+    double volume=0.5; if(s.readDouble(volume)) setParamNormalized(kPingVolumeId,std::clamp(volume,0.0,1.0));
+    return kResultOk;
 }
 
 IPlugView* PLUGIN_API MotivatoratorController::createView(FIDString name){if(name&&std::strcmp(name,ViewType::kEditor)==0)return new MotivatoratorEditor(this);return nullptr;}
