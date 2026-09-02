@@ -17,8 +17,6 @@ public:
         positive_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_positive.png"));
         negative_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_negative.png"));
 
-        // The new GNOMI assets are square HiDPI cutouts. A 4x logical scale keeps
-        // plenty of resolution for later GUI scaling while avoiding the old oversized look.
         if (positive_ && positive_->getPlatformBitmap())
             positive_->getPlatformBitmap()->setScaleFactor(4.0);
         if (negative_ && negative_->getPlatformBitmap())
@@ -47,10 +45,12 @@ public:
 
         auto bitmap = useNegative ? negative_ : positive_;
         if (bitmap) {
-            // The replacement assets are composed as square character cutouts, so draw
-            // them into a square 270x270 slot. This preserves their proportions and lets
-            // the boots/body meet the studio surface naturally instead of being masked off.
-            bitmap->draw(context, getViewSize(), VSTGUI::CPoint(0., 0.), 1.f);
+            // Keep GNOMI at exactly the accepted 270x270 size and position.  The view
+            // itself is wider, however, so transparent pixels and the hand may extend
+            // across the CRT frame without VSTGUI clipping the character at x=288.
+            const auto view = getViewSize();
+            const VSTGUI::CRect characterRect(view.left, view.top, view.left + 270., view.top + 270.);
+            bitmap->draw(context, characterRect, VSTGUI::CPoint(0., 0.), 1.f);
         }
         setDirty(false);
     }
@@ -97,7 +97,7 @@ VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attri
                                                 const VSTGUI::IUIDescription* description) {
     if (const auto name = attributes.getAttributeValue(VSTGUI::IUIDescription::kCustomViewName)) {
         if (*name == "CharacterView")
-            return new CharacterView(VSTGUI::CRect(18., 82., 288., 352.), controller_);
+            return new CharacterView(VSTGUI::CRect(18., 82., 430., 352.), controller_);
         if (*name == "ModeMotivator")
             return new ModeHitView(VSTGUI::CRect(241., 369., 310., 408.), controller_, 0.0);
         if (*name == "ModeDemotivator")
