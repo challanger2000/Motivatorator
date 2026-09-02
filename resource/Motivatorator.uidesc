@@ -13,7 +13,6 @@
     <control-tag name="phrase" tag="107"/>
   </control-tags>
   <fonts>
-    <font name="screen" font-name="Arial" size="20" bold="true"/>
     <font name="small" font-name="Arial" size="11" bold="true"/>
     <font name="option" font-name="Arial" size="13" bold="true"/>
     <font name="brand" font-name="Arial" size="24" bold="true"/>
@@ -21,7 +20,6 @@
   <colors>
     <color name="metal" rgba="#403c34ff"/>
     <color name="metalDark" rgba="#171512f7"/>
-    <color name="screenGlow" rgba="#79f2a6ff"/>
     <color name="cream" rgba="#e7dfc8ff"/>
     <color name="amber" rgba="#e4a84cff"/>
     <color name="muted" rgba="#aaa38fff"/>
@@ -29,16 +27,14 @@
   </colors>
 
   <template name="view" class="CViewContainer" size="760,430">
+    <!-- Diagnostic/stable main page: render only the complete 760x430 artwork first.
+         No phrase control is drawn over it until the host shows this image correctly. -->
     <view class="CView" origin="0,0" size="760,430" bitmap="mainbg"/>
 
-    <!-- Stable fixed phrase display inside the CRT glass. The scrolling implementation
-         will be reintroduced with a dedicated custom view instead of moving this control. -->
-    <view class="CParamDisplay" origin="352,144" size="250,116" control-tag="phrase" font="screen" font-color="screenGlow" back-color="transparent" frame-color="transparent" frame-width="0" style-no-frame="true" transparent="true" text-alignment="center"/>
-
-    <!-- Invisible click target exactly over the rendered OPTIONS plate. -->
+    <!-- Invisible click target over the OPTIONS plate in the artwork. -->
     <view class="CTextButton" origin="604,4" size="112,44" title="" control-tag="options" kick-style="true" transparent="true" frame-width="0" text-color="transparent" text-color-highlighted="transparent" gradient-start-color="transparent" gradient-end-color="transparent" gradient-start-color-hightlighted="transparent" gradient-end-color-highlighted="transparent"/>
 
-    <!-- Page 2: all operational controls stay off the main scene. -->
+    <!-- Page 2 remains available, but starts hidden via MotivatoratorEditor. -->
     <view class="CViewContainer" origin="30,54" size="700,326" background-color="metalDark" custom-view-name="OptionsPanel">
       <view class="CTextLabel" origin="24,16" size="300,32" title="OPTIONS" font="brand" font-color="amber" transparent="true"/>
       <view class="CTextLabel" origin="24,72" size="120,20" title="MODE" font="small" font-color="muted" transparent="true"/>
