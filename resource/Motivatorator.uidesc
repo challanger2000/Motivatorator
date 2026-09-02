@@ -26,15 +26,11 @@
     <color name="transparent" rgba="#00000000"/>
   </colors>
 
-  <template name="view" class="CViewContainer" size="760,430">
-    <!-- Diagnostic/stable main page: render only the complete 760x430 artwork first.
-         No phrase control is drawn over it until the host shows this image correctly. -->
-    <view class="CView" origin="0,0" size="760,430" bitmap="mainbg"/>
-
-    <!-- Invisible click target over the OPTIONS plate in the artwork. -->
+  <!-- Main artwork is now the background of the root container itself.
+       This avoids a full-size child CView and follows the normal VSTGUI background path. -->
+  <template name="view" class="CViewContainer" size="760,430" bitmap="mainbg">
     <view class="CTextButton" origin="604,4" size="112,44" title="" control-tag="options" kick-style="true" transparent="true" frame-width="0" text-color="transparent" text-color-highlighted="transparent" gradient-start-color="transparent" gradient-end-color="transparent" gradient-start-color-hightlighted="transparent" gradient-end-color-highlighted="transparent"/>
 
-    <!-- Page 2 remains available, but starts hidden via MotivatoratorEditor. -->
     <view class="CViewContainer" origin="30,54" size="700,326" background-color="metalDark" custom-view-name="OptionsPanel">
       <view class="CTextLabel" origin="24,16" size="300,32" title="OPTIONS" font="brand" font-color="amber" transparent="true"/>
       <view class="CTextLabel" origin="24,72" size="120,20" title="MODE" font="small" font-color="muted" transparent="true"/>
