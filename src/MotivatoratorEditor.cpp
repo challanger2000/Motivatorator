@@ -17,10 +17,12 @@ public:
         positive_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_positive.png"));
         negative_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_negative.png"));
 
+        // Both GNOMI assets are about 1.5:1. 5.1x keeps that natural aspect
+        // while giving a roughly 300 x 200 logical-pixel character.
         if (positive_ && positive_->getPlatformBitmap())
-            positive_->getPlatformBitmap()->setScaleFactor(6.0);
+            positive_->getPlatformBitmap()->setScaleFactor(5.1);
         if (negative_ && negative_->getPlatformBitmap())
-            negative_->getPlatformBitmap()->setScaleFactor(6.0);
+            negative_->getPlatformBitmap()->setScaleFactor(5.1);
 
         timer_ = VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>(
             [this](VSTGUI::CVSTGUITimer*) { invalid(); }, 100);
@@ -45,8 +47,7 @@ public:
         auto bitmap = useNegative ? negative_ : positive_;
         if (bitmap) {
             const auto r = getViewSize();
-            VSTGUI::CRect dest(r.left, r.top, r.right, r.bottom);
-            bitmap->draw(context, dest, VSTGUI::CPoint(0., 0.), 1.f);
+            bitmap->draw(context, r, VSTGUI::CPoint(0., 0.), 1.f);
         }
         setDirty(false);
     }
@@ -56,6 +57,30 @@ private:
     VSTGUI::SharedPointer<VSTGUI::CBitmap> positive_;
     VSTGUI::SharedPointer<VSTGUI::CBitmap> negative_;
     VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
+};
+
+// Re-paints the original foreground equipment over the lower part of the
+// character. This makes GNOMI look as if he is standing behind the desk/rack
+// instead of ending on a hard rectangular bitmap edge.
+class CharacterForegroundView final : public VSTGUI::CView {
+public:
+    explicit CharacterForegroundView(const VSTGUI::CRect& size)
+    : CView(size) {
+        background_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(
+            VSTGUI::CResourceDescription("motivator_base_760x428.png"));
+        setMouseEnabled(false);
+    }
+
+    void draw(VSTGUI::CDrawContext* context) override {
+        if (background_) {
+            const auto r = getViewSize();
+            background_->draw(context, r, VSTGUI::CPoint(r.left, r.top), 1.f);
+        }
+        setDirty(false);
+    }
+
+private:
+    VSTGUI::SharedPointer<VSTGUI::CBitmap> background_;
 };
 
 class ModeHitView final : public VSTGUI::CView {
@@ -92,10 +117,10 @@ MotivatoratorEditor::MotivatoratorEditor(EditController* controller)
 VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attributes,
                                                 const VSTGUI::IUIDescription* description) {
     if (const auto name = attributes.getAttributeValue(VSTGUI::IUIDescription::kCustomViewName)) {
-        // Custom views keep the rectangle supplied here. Use the real GUI coordinates;
-        // otherwise every custom view starts at 0,0 regardless of its UIDesc position.
         if (*name == "CharacterView")
-            return new CharacterView(VSTGUI::CRect(18., 72., 278., 282.), controller_);
+            return new CharacterView(VSTGUI::CRect(10., 75., 320., 285.), controller_);
+        if (*name == "CharacterForeground")
+            return new CharacterForegroundView(VSTGUI::CRect(0., 242., 290., 350.));
         if (*name == "ModeMotivator")
             return new ModeHitView(VSTGUI::CRect(241., 369., 310., 408.), controller_, 0.0);
         if (*name == "ModeDemotivator")
