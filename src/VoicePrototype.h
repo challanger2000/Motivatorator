@@ -18,7 +18,7 @@ public:
     VoicePrototype& operator=(const VoicePrototype&) = delete;
 
     void setSampleRate(double sampleRate);
-    void request(const std::u16string& text);
+    void request(const std::u16string& text, int language, int character);
     float nextSample() noexcept;
     void resetPlayback() noexcept;
 
