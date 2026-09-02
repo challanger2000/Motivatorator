@@ -42,7 +42,8 @@ def indexed_files(root: Path, language: str) -> dict[int, Path]:
 
 
 def cpp_literal(body: str) -> str:
-    return f'u"{body}"'
+    # STR16 expects an ordinary string literal and supplies the UTF-16 prefix itself.
+    return f'"{body}"'
 
 
 def main() -> int:
