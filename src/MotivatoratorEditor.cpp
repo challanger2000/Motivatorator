@@ -17,10 +17,13 @@ public:
         positive_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_positive.png"));
         negative_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_negative.png"));
 
+        // The uploaded cutouts are roughly 1290x1210 px.  At 4.5x they render
+        // about 289x270 logical pixels, i.e. essentially the accepted height,
+        // but now the complete width (including the extended hand) is visible.
         if (positive_ && positive_->getPlatformBitmap())
-            positive_->getPlatformBitmap()->setScaleFactor(4.0);
+            positive_->getPlatformBitmap()->setScaleFactor(4.5);
         if (negative_ && negative_->getPlatformBitmap())
-            negative_->getPlatformBitmap()->setScaleFactor(4.0);
+            negative_->getPlatformBitmap()->setScaleFactor(4.5);
 
         setMouseEnabled(false);
         timer_ = VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>(
@@ -45,12 +48,10 @@ public:
 
         auto bitmap = useNegative ? negative_ : positive_;
         if (bitmap) {
-            // Keep GNOMI at exactly the accepted 270x270 size and position.  The view
-            // itself is wider, however, so transparent pixels and the hand may extend
-            // across the CRT frame without VSTGUI clipping the character at x=288.
-            const auto view = getViewSize();
-            const VSTGUI::CRect characterRect(view.left, view.top, view.left + 270., view.top + 270.);
-            bitmap->draw(context, characterRect, VSTGUI::CPoint(0., 0.), 1.f);
+            // Important: the destination is deliberately wider than the old 270 px
+            // character slot. CBitmap draws at its logical size and clips to this rect,
+            // so the full transparent cutout can now reach across the CRT bezel.
+            bitmap->draw(context, getViewSize(), VSTGUI::CPoint(0., 0.), 1.f);
         }
         setDirty(false);
     }
@@ -97,7 +98,7 @@ VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attri
                                                 const VSTGUI::IUIDescription* description) {
     if (const auto name = attributes.getAttributeValue(VSTGUI::IUIDescription::kCustomViewName)) {
         if (*name == "CharacterView")
-            return new CharacterView(VSTGUI::CRect(18., 82., 430., 352.), controller_);
+            return new CharacterView(VSTGUI::CRect(18., 82., 335., 352.), controller_);
         if (*name == "ModeMotivator")
             return new ModeHitView(VSTGUI::CRect(241., 369., 310., 408.), controller_, 0.0);
         if (*name == "ModeDemotivator")
