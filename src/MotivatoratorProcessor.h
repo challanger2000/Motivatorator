@@ -2,6 +2,8 @@
 
 #include "public.sdk/source/vst/vstaudioeffect.h"
 #include "public.sdk/source/vst/vsteditcontroller.h"
+#include <atomic>
+#include <chrono>
 #include <cstdint>
 
 namespace Steinberg::Vst {
@@ -43,6 +45,13 @@ private:
     void mixPing(ProcessData& data);
     int nextDeckIndex(bool motivator);
 
+    static uint32_t startupSeed() {
+        static std::atomic<uint32_t> sequence {0};
+        const auto ticks = static_cast<uint64_t>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+        const uint32_t n = sequence.fetch_add(1, std::memory_order_relaxed) + 1u;
+        return static_cast<uint32_t>(ticks ^ (ticks >> 32)) ^ (0x9E3779B9u * n);
+    }
+
     double sampleRate_ {44100.0};
     int mode_ {0};
     int language_ {0};
@@ -58,11 +67,11 @@ private:
     int64 pingSamplesRemaining_ {0};
     int64 pingSamplesTotal_ {0};
     double pingPhase_ {0.0};
-    uint32_t mixedRandomState_ {0xA341316Cu};
+    uint32_t mixedRandomState_ {startupSeed() | 1u};
     int motivatorPos_ {0};
     int demotivatorPos_ {0};
-    int motivatorStart_ {0};
-    int demotivatorStart_ {9};
+    int motivatorStart_ {static_cast<int>(startupSeed() % 500u)};
+    int demotivatorStart_ {static_cast<int>(startupSeed() % 500u)};
     int motivatorStep_ {37};
     int demotivatorStep_ {53};
     int currentPhraseGlobal_ {0};
