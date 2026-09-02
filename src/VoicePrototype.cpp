@@ -80,52 +80,77 @@ struct VoicePrototype::Impl {
     }
 
 #ifdef _WIN32
+    static std::vector<float> resamplePitch(const std::vector<float>& input, double factor) {
+        if (input.empty() || factor <= 0.01) return input;
+        size_t outCount = static_cast<size_t>(static_cast<double>(input.size()) / factor);
+        if (outCount < 1u) outCount = 1u;
+        std::vector<float> out(outCount, 0.0f);
+        for (size_t i = 0; i < outCount; ++i) {
+            const double sourcePos = static_cast<double>(i) * factor;
+            size_t a = static_cast<size_t>(sourcePos);
+            if (a >= input.size()) a = input.size() - 1;
+            size_t b = a + 1;
+            if (b >= input.size()) b = input.size() - 1;
+            const double frac = sourcePos - static_cast<double>(a);
+            out[i] = static_cast<float>(input[a] * (1.0 - frac) + input[b] * frac);
+        }
+        return out;
+    }
+
     static void applyCharacterDSP(std::vector<float>& audio, double sampleRate, int character) {
         if (audio.empty() || sampleRate < 8000.0) return;
 
-        // All character processing is done once on the worker thread after TTS.
-        // The audio thread only plays the finished buffer, keeping realtime CPU tiny.
+        // Do the expensive/creative work only once on the worker thread. This
+        // deliberately does not depend on Windows exposing a suitable male voice.
+        // Pitch factors below 1.0 lower the voice. GNOMI stays the least low and
+        // gets brightness back afterwards, so he remains small/cheeky rather than huge.
+        const double pitchFactor = character == 0 ? 0.90 : (character == 1 ? 0.80 : 0.72);
+        audio = resamplePitch(audio, pitchFactor);
+
         const size_t originalSize = audio.size();
-        const double tailSeconds = character == 2 ? 0.18 : 0.10;
+        const double tailSeconds = character == 2 ? 0.24 : (character == 1 ? 0.13 : 0.11);
         const size_t tailSamples = static_cast<size_t>(sampleRate * tailSeconds);
         audio.resize(originalSize + tailSamples, 0.0f);
 
-        const float drive = character == 0 ? 1.18f : (character == 1 ? 1.10f : 1.34f);
-        const float wet = character == 0 ? 0.075f : (character == 1 ? 0.11f : 0.15f);
-        const double roomMs = character == 0 ? 38.0 : (character == 1 ? 31.0 : 67.0);
+        const float drive = character == 0 ? 1.42f : (character == 1 ? 1.24f : 1.62f);
+        const float wet = character == 0 ? 0.09f : (character == 1 ? 0.14f : 0.20f);
+        const double roomMs = character == 0 ? 36.0 : (character == 1 ? 27.0 : 72.0);
         size_t roomDelay = static_cast<size_t>(sampleRate * roomMs / 1000.0);
         if (roomDelay < 1u) roomDelay = 1u;
-        const float feedback = character == 2 ? 0.34f : 0.22f;
+        const float feedback = character == 0 ? 0.19f : (character == 1 ? 0.27f : 0.39f);
 
         std::vector<float> delay(roomDelay, 0.0f);
         size_t delayPos = 0;
 
-        // Simple one-pole tone state. This is intentionally cheap and stable.
         float low = 0.0f;
-        const double cutoff = character == 0 ? 2400.0 : (character == 1 ? 3600.0 : 1850.0);
+        float lowDark = 0.0f;
+        const double cutoff = character == 0 ? 2200.0 : (character == 1 ? 3100.0 : 1450.0);
         const float alpha = static_cast<float>(1.0 - std::exp(-6.283185307179586 * cutoff / sampleRate));
+        const float darkAlpha = static_cast<float>(1.0 - std::exp(-6.283185307179586 * 900.0 / sampleRate));
         double robotPhase = 0.0;
-        const double robotStep = 6.283185307179586 * 42.0 / sampleRate;
+        const double robotStep = 6.283185307179586 * 52.0 / sampleRate;
 
         for (size_t i = 0; i < audio.size(); ++i) {
             float x = audio[i];
             low += alpha * (x - low);
+            lowDark += darkAlpha * (x - lowDark);
 
             if (character == 0) {
-                // GNOMI: older male base voice, but small, bright, cheeky and a bit rough.
+                // GNOMI: lowered enough to lose the obvious female character, then
+                // brightened and roughed up so he still sounds small, old and cheeky.
                 const float presence = x - low;
-                x = x + 0.32f * presence;
+                x = 0.92f * x + 0.62f * presence;
                 x = std::tanh(x * drive) / std::tanh(drive);
             } else if (character == 1) {
-                // ROCKY: restrained metallic/robotic modulation, still intelligible.
-                const float mod = static_cast<float>(0.87 + 0.13 * std::sin(robotPhase));
+                // ROCKY: clearly lower plus audible metallic amplitude modulation.
+                const float mod = static_cast<float>(0.72 + 0.28 * std::sin(robotPhase));
                 robotPhase += robotStep;
                 if (robotPhase > 6.283185307179586) robotPhase -= 6.283185307179586;
-                x = (0.72f * x + 0.28f * low) * mod;
+                x = (0.58f * x + 0.42f * low) * mod;
                 x = std::tanh(x * drive) / std::tanh(drive);
             } else {
-                // D.O.M.: darker, heavier and more saturated.
-                x = 0.30f * x + 0.70f * low;
+                // D.O.M.: substantially lower, darker and more saturated.
+                x = 0.18f * x + 0.82f * lowDark;
                 x = std::tanh(x * drive) / std::tanh(drive);
             }
 
@@ -157,8 +182,8 @@ struct VoicePrototype::Impl {
         if (FAILED(CoCreateInstance(CLSID_SpVoice, nullptr, CLSCTX_INPROC_SERVER, IID_ISpVoice,
                                     reinterpret_cast<void**>(&voice)))) { cleanup(); return {}; }
 
-        // Prefer a male SAPI voice in the selected language. Fall back to any
-        // matching language voice, then finally to the Windows default voice.
+        // Prefer a matching male voice when Windows actually exposes one. The
+        // character DSP below no longer depends on this succeeding.
         const wchar_t* maleFilter = language == 0 ? L"Language=407;Gender=Male" : L"Language=409;Gender=Male";
         const wchar_t* languageFilter = language == 0 ? L"Language=407" : L"Language=409";
         if (FAILED(SpFindBestToken(SPCAT_VOICES, maleFilter, nullptr, &voiceToken)) || !voiceToken) {
@@ -167,7 +192,9 @@ struct VoicePrototype::Impl {
         }
         if (voiceToken) voice->SetVoice(voiceToken);
 
-        const long speakingRate = character == 0 ? 2L : (character == 1 ? -1L : -3L);
+        // Rate compensates partly for the later downward pitch resampling so the
+        // characters remain conversational instead of becoming excessively slow.
+        const long speakingRate = character == 0 ? 4L : (character == 1 ? 2L : 1L);
         voice->SetRate(speakingRate);
 
         if (FAILED(CreateStreamOnHGlobal(nullptr, TRUE, &memoryStream))) { cleanup(); return {}; }
