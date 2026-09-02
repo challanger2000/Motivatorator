@@ -5,6 +5,9 @@
   </bitmaps>
 
   <template name="view" class="CViewContainer" size="760,428" bitmap="mainBackground">
-    <view class="CView" size="18,92,318,332" custom-view-name="CharacterView" transparent="true"/>
+    <view class="CView" size="24,102,284,312" custom-view-name="CharacterView" transparent="true"/>
+    <view class="CView" size="241,369,310,408" custom-view-name="ModeMotivator" transparent="true"/>
+    <view class="CView" size="315,369,399,408" custom-view-name="ModeDemotivator" transparent="true"/>
+    <view class="CView" size="404,369,470,408" custom-view-name="ModeMixed" transparent="true"/>
   </template>
 </vstgui-ui-description>
