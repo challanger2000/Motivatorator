@@ -53,11 +53,10 @@ private:
     int demotivatorPos_ {0};
     int motivatorStart_ {0};
     int demotivatorStart_ {9};
-    int motivatorStep_ {5};
-    int demotivatorStep_ {7};
+    int motivatorStep_ {37};
+    int demotivatorStep_ {53};
     int currentPhraseGlobal_ {0};
     int64 samplesUntilNext_ {0};
-    uint32_t intervalRng_ {0x4D4F5449u};
 };
 
 class MotivatoratorController final : public EditControllerEx1 {
