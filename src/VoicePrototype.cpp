@@ -4,10 +4,8 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstring>
-#include <memory>
 #include <mutex>
 #include <thread>
-#include <vector>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -25,6 +23,8 @@ struct VoicePrototype::Impl {
     bool stopping {false};
     bool pending {false};
     std::u16string pendingText;
+    int pendingLanguage {0};
+    int pendingCharacter {0};
     std::atomic<double> targetRate {44100.0};
 
     // Published by worker, then consumed lock-free by the audio thread.
@@ -51,16 +51,20 @@ struct VoicePrototype::Impl {
 #endif
         for (;;) {
             std::u16string text;
+            int language = 0;
+            int character = 0;
             {
                 std::unique_lock<std::mutex> lock(mutex);
                 cv.wait(lock, [this] { return stopping || pending; });
                 if (stopping) break;
                 text = pendingText;
+                language = pendingLanguage;
+                character = pendingCharacter;
                 pending = false;
             }
 #ifdef _WIN32
             if (comReady) {
-                auto audio = synthesize(text, targetRate.load(std::memory_order_relaxed));
+                auto audio = synthesize(text, targetRate.load(std::memory_order_relaxed), language, character);
                 if (audio && !audio->empty()) {
                     std::atomic_store_explicit(&published,
                         std::shared_ptr<const std::vector<float>>(std::move(audio)),
@@ -76,11 +80,15 @@ struct VoicePrototype::Impl {
     }
 
 #ifdef _WIN32
-    static std::shared_ptr<std::vector<float>> synthesize(const std::u16string& text, double requestedRate) {
+    static std::shared_ptr<std::vector<float>> synthesize(const std::u16string& text, double requestedRate, int language, int character) {
         ISpVoice* voice = nullptr;
         ISpStream* speechStream = nullptr;
         IStream* memoryStream = nullptr;
+        ISpObjectToken* voiceToken = nullptr;
+        WAVEFORMATEX* waveFormat = nullptr;
         auto cleanup = [&] {
+            if (voiceToken) voiceToken->Release();
+            if (waveFormat) CoTaskMemFree(waveFormat);
             if (speechStream) speechStream->Release();
             if (memoryStream) memoryStream->Release();
             if (voice) voice->Release();
@@ -88,21 +96,37 @@ struct VoicePrototype::Impl {
 
         if (FAILED(CoCreateInstance(CLSID_SpVoice, nullptr, CLSCTX_INPROC_SERVER, IID_ISpVoice,
                                     reinterpret_cast<void**>(&voice)))) { cleanup(); return {}; }
+
+        // Prefer a voice matching the currently selected plugin language.
+        // German = 0x0407, English (US) = 0x0409. If no matching token is
+        // installed, SAPI simply keeps the user's default voice.
+        const wchar_t* languageFilter = language == 0 ? L"Language=407" : L"Language=409";
+        if (SUCCEEDED(SpFindBestToken(SPCAT_VOICES, languageFilter, nullptr, &voiceToken)) && voiceToken) {
+            voice->SetVoice(voiceToken);
+        }
+
+        // First character differentiation happens at synthesis time. More
+        // obvious timbral processing can be layered on later without changing
+        // the realtime-safe architecture.
+        const long speakingRate = character == 0 ? 2L : (character == 1 ? -1L : -3L);
+        voice->SetRate(speakingRate);
+
         if (FAILED(CreateStreamOnHGlobal(nullptr, TRUE, &memoryStream))) { cleanup(); return {}; }
         if (FAILED(CoCreateInstance(CLSID_SpStream, nullptr, CLSCTX_INPROC_SERVER, IID_ISpStream,
                                     reinterpret_cast<void**>(&speechStream)))) { cleanup(); return {}; }
 
-        // Fixed 44.1 kHz, 16-bit mono PCM. Defining the WAVEFORMATEX explicitly avoids
-        // depending on SDK-specific SpConvertStreamFormatEnum overloads.
-        WAVEFORMATEX waveFormat {};
-        waveFormat.wFormatTag = WAVE_FORMAT_PCM;
-        waveFormat.nChannels = 1;
-        waveFormat.nSamplesPerSec = 44100;
-        waveFormat.wBitsPerSample = 16;
-        waveFormat.nBlockAlign = static_cast<WORD>(waveFormat.nChannels * waveFormat.wBitsPerSample / 8);
-        waveFormat.nAvgBytesPerSec = waveFormat.nSamplesPerSec * waveFormat.nBlockAlign;
-        waveFormat.cbSize = 0;
-        if (FAILED(speechStream->SetBaseStream(memoryStream, SPDFID_WaveFormatEx, &waveFormat))) { cleanup(); return {}; }
+        waveFormat = static_cast<WAVEFORMATEX*>(CoTaskMemAlloc(sizeof(WAVEFORMATEX)));
+        if (!waveFormat) { cleanup(); return {}; }
+        std::memset(waveFormat, 0, sizeof(WAVEFORMATEX));
+        waveFormat->wFormatTag = WAVE_FORMAT_PCM;
+        waveFormat->nChannels = 1;
+        waveFormat->nSamplesPerSec = 44100;
+        waveFormat->wBitsPerSample = 16;
+        waveFormat->nBlockAlign = static_cast<WORD>(waveFormat->nChannels * waveFormat->wBitsPerSample / 8);
+        waveFormat->nAvgBytesPerSec = waveFormat->nSamplesPerSec * waveFormat->nBlockAlign;
+        waveFormat->cbSize = 0;
+
+        if (FAILED(speechStream->SetBaseStream(memoryStream, SPDFID_WaveFormatEx, waveFormat))) { cleanup(); return {}; }
         if (FAILED(voice->SetOutput(speechStream, TRUE))) { cleanup(); return {}; }
 
         std::wstring wide;
@@ -128,7 +152,7 @@ struct VoicePrototype::Impl {
 
         constexpr double sourceRate = 44100.0;
         const double target = (std::max)(8000.0, (std::min)(requestedRate, 192000.0));
-        const size_t outCount = (std::max)(size_t{1}, static_cast<size_t>(pcm.size() * target / sourceRate));
+        const size_t outCount = (std::max)<size_t>(1, static_cast<size_t>(pcm.size() * target / sourceRate));
         auto out = std::make_shared<std::vector<float>>(outCount);
         const double step = sourceRate / target;
         for (size_t i = 0; i < outCount; ++i) {
@@ -151,11 +175,13 @@ void VoicePrototype::setSampleRate(double sampleRate) {
     impl_->targetRate.store(sampleRate > 1.0 ? sampleRate : 44100.0, std::memory_order_relaxed);
 }
 
-void VoicePrototype::request(const std::u16string& text) {
+void VoicePrototype::request(const std::u16string& text, int language, int character) {
     if (text.empty()) return;
     {
         std::lock_guard<std::mutex> lock(impl_->mutex);
         impl_->pendingText = text;
+        impl_->pendingLanguage = language;
+        impl_->pendingCharacter = character;
         impl_->pending = true;
     }
     impl_->cv.notify_one();
