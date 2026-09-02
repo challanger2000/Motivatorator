@@ -1,5 +1,6 @@
 #pragma once
 
+#include "pluginterfaces/vst/vsttypes.h"
 #include <array>
 #include <cstddef>
 #include <string>
@@ -87,23 +88,36 @@ inline std::u16string buildPhrase(bool positive, bool english, std::size_t index
     const std::size_t opener = index / 50;
     const std::size_t core = (index / 5) % 10;
     const std::size_t close = index % 5;
-
-    const auto& opens = positive
-        ? (english ? kPosOpenEN : kPosOpenDE)
-        : (english ? kNegOpenEN : kNegOpenDE);
-    const auto& cores = positive
-        ? (english ? kPosCoreEN : kPosCoreDE)
-        : (english ? kNegCoreEN : kNegCoreDE);
-    const auto& closes = positive
-        ? (english ? kPosCloseEN : kPosCloseDE)
-        : (english ? kNegCloseEN : kNegCloseDE);
-
-    std::u16string result(opens[opener]);
-    result += u" ";
-    result += cores[core];
-    result += u" ";
-    result += closes[close];
+    const auto& opens = positive ? (english ? kPosOpenEN : kPosOpenDE) : (english ? kNegOpenEN : kNegOpenDE);
+    const auto& cores = positive ? (english ? kPosCoreEN : kPosCoreDE) : (english ? kNegCoreEN : kNegCoreDE);
+    const auto& closes = positive ? (english ? kPosCloseEN : kPosCloseDE) : (english ? kNegCloseEN : kNegCloseDE);
+    std::u16string result(opens[opener]); result += u" "; result += cores[core]; result += u" "; result += closes[close];
     return result;
 }
+
+struct Phrase {
+    const Steinberg::Vst::TChar* de;
+    const Steinberg::Vst::TChar* en;
+};
+
+class PhraseProxyArray {
+public:
+    explicit PhraseProxyArray(bool positive) : positive_(positive) {}
+    const Phrase& operator[](std::size_t index) const {
+        de_ = buildPhrase(positive_, false, index);
+        en_ = buildPhrase(positive_, true, index);
+        current_.de = reinterpret_cast<const Steinberg::Vst::TChar*>(de_.c_str());
+        current_.en = reinterpret_cast<const Steinberg::Vst::TChar*>(en_.c_str());
+        return current_;
+    }
+private:
+    bool positive_;
+    mutable std::u16string de_;
+    mutable std::u16string en_;
+    mutable Phrase current_ {nullptr, nullptr};
+};
+
+inline PhraseProxyArray kMotivator {true};
+inline PhraseProxyArray kDemotivator {false};
 
 } // namespace MotivatoratorPhrases
