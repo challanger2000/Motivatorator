@@ -24,7 +24,9 @@ enum MotivatoratorParams : ParamID {
     kPhraseId = 107,
     kPhraseToneId = 108,
     kMessageSoundId = 109,
-    kPingVolumeId = 110
+    kPingVolumeId = 110,
+    kVoiceEnabledId = 111,
+    kVoiceVolumeId = 112
 };
 
 class MotivatoratorProcessor final : public AudioEffect {
@@ -66,6 +68,8 @@ private:
     bool needsPhraseEmit_ {true};
     bool messageSound_ {true};
     double pingVolume_ {0.5};
+    bool voiceEnabled_ {true};
+    double voiceVolume_ {0.5};
     int64 pingSamplesRemaining_ {0};
     int64 pingSamplesTotal_ {0};
     double pingPhase_ {0.0};
