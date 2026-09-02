@@ -4,6 +4,7 @@
 #include "vstgui/lib/cvstguitimer.h"
 #include "vstgui/uidescription/uiattributes.h"
 #include <algorithm>
+#include <cmath>
 
 namespace Steinberg::Vst {
 
@@ -16,6 +17,8 @@ public:
         positive_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_positive.png"));
         negative_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_negative.png"));
 
+        // The source assets are 4x GUI resolution. Tell VSTGUI their logical scale
+        // and draw them into a deliberately smaller character slot.
         if (positive_ && positive_->getPlatformBitmap())
             positive_->getPlatformBitmap()->setScaleFactor(4.0);
         if (negative_ && negative_->getPlatformBitmap())
@@ -31,15 +34,22 @@ public:
             return;
         }
 
-        const auto modeValue = controller_->getParamNormalized(kModeId);
-        const auto toneValue = controller_->getParamNormalized(kPhraseToneId);
-        const int mode = std::clamp(static_cast<int>(modeValue * 3.0), 0, 2);
+        const double modeValue = controller_->getParamNormalized(kModeId);
+        const double toneValue = controller_->getParamNormalized(kPhraseToneId);
+
+        // StringListParameter with 3 entries maps to 0.0 / 0.5 / 1.0.
+        // Round to the nearest of the three states instead of multiplying by 3,
+        // which incorrectly mapped DEMOTIVATOR (0.5) back to state 1 only by accident
+        // and made boundary behaviour unreliable.
+        const int mode = std::clamp(static_cast<int>(std::lround(modeValue * 2.0)), 0, 2);
 
         bool useNegative = false;
-        if (mode == 1)
+        if (mode == 1) {
             useNegative = true;
-        else if (mode == 2)
+        } else if (mode == 2) {
+            // Phrase Tone is a two-state parameter: positive=0, negative=1.
             useNegative = toneValue >= 0.5;
+        }
 
         auto bitmap = useNegative ? negative_ : positive_;
         if (bitmap) {
@@ -66,7 +76,7 @@ VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attri
                                                 const VSTGUI::IUIDescription* description) {
     if (const auto name = attributes.getAttributeValue(VSTGUI::IUIDescription::kCustomViewName)) {
         if (*name == "CharacterView")
-            return new CharacterView(VSTGUI::CRect(0., 0., 390., 300.), controller_);
+            return new CharacterView(VSTGUI::CRect(0., 0., 300., 240.), controller_);
     }
     return VSTGUI::VST3Editor::createView(attributes, description);
 }
