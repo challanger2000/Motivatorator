@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Static quality checks for German phrase candidate batches.
 
-This script NEVER generates or combines phrases. It only reports candidates that
-need human curation before they can enter the runtime PhraseBank.
+This script NEVER generates or combines phrases. It reports structural and style
+risks that need curation before candidates enter the runtime PhraseBank.
 """
 from __future__ import annotations
 
@@ -16,16 +16,25 @@ FILES = sorted(PHRASE_DIR.glob("CuratedGermanBatch*.inc"))
 
 PHRASE_RE = re.compile(r'^u"(.*)",\s*$')
 
-# Direct-address words we deliberately avoid so every comment remains neutral.
+# Gendered/direct-address words deliberately excluded from the final bank.
 FORBIDDEN = {
     "habibi", "bruder", "junge", "mann", "meister", "könig", "koenig",
     "chef", "professor", "eier",
 }
 
-# These are not automatic failures, but too many make the bank sound formulaic.
+# Concrete production references make the companion less universal.
+CONTENT_FORBIDDEN = {
+    "gitarre", "gitarren", "bassgitarre", "schlagzeug", "drums", "drum",
+    "klavier", "piano", "synth", "synthesizer", "serum", "spire", "dune",
+    "studio one", "ableton", "cubase", "logic", "fl studio", "reaper",
+    "vst", "vst3", "plugin", "plugins", "techno", "metal", "rock", "house",
+}
+
+# These are fine in moderation, but high counts make the colleague sound scripted.
 WATCH_OPENERS = {
     "okay", "boah", "uff", "verdammt", "scheiße", "scheisse", "alter",
 }
+MAX_WATCHED_OPENER = 35
 
 
 def norm(text: str) -> str:
@@ -47,6 +56,10 @@ def phrases():
                 yield path, lineno, section, m.group(1)
 
 
+def tokens(text: str) -> set[str]:
+    return set(norm(text).split())
+
+
 def main() -> int:
     rows = list(phrases())
     errors = 0
@@ -66,7 +79,12 @@ def main() -> int:
         hit = sorted(w for w in FORBIDDEN if re.search(rf"\b{re.escape(norm(w))}\b", n))
         if hit:
             errors += 1
-            print(f"ERROR forbidden {hit}: {path.name}:{lineno}: {text}")
+            print(f"ERROR forbidden address {hit}: {path.name}:{lineno}: {text}")
+
+        content_hit = sorted(w for w in CONTENT_FORBIDDEN if re.search(rf"\b{re.escape(norm(w))}\b", n))
+        if content_hit:
+            errors += 1
+            print(f"ERROR concrete content {content_hit}: {path.name}:{lineno}: {text}")
 
         if n in seen:
             errors += 1
@@ -84,18 +102,33 @@ def main() -> int:
         count = opener_counts[opener]
         if count:
             print(f"  {opener}: {count}")
-
-    # Raw batches are allowed to contain more than the final target. They must
-    # never silently contain fewer than the first agreed curation target.
-    for section in ("motivator", "demotivator"):
-        if counts[section] < 500:
+        if count > MAX_WATCHED_OPENER:
             errors += 1
-            print(f"ERROR only {counts[section]} {section} candidates; target is at least 500")
+            print(f"ERROR opener '{opener}' used {count} times; max {MAX_WATCHED_OPENER}")
+
+    # Flag suspiciously similar entries. This is intentionally conservative:
+    # exact duplicates fail above; high token overlap is a review warning only.
+    for i, (p1, l1, s1, t1) in enumerate(rows):
+        a = tokens(t1)
+        if len(a) < 5:
+            continue
+        for p2, l2, s2, t2 in rows[i + 1:]:
+            b = tokens(t2)
+            if len(b) < 5:
+                continue
+            overlap = len(a & b) / len(a | b)
+            if overlap >= 0.72:
+                print(f"WARN near-duplicate ({overlap:.2f}): {p1.name}:{l1} <-> {p2.name}:{l2}")
+
+    for section in ("motivator", "demotivator"):
+        if counts[section] != 500:
+            errors += 1
+            print(f"ERROR {section} has {counts[section]} candidates; final German target is exactly 500")
 
     if errors:
         print(f"\nFAILED: {errors} issue(s) require curation.")
         return 1
-    print("\nPASS: structural checks clean. Semantic/funniness review is still required.")
+    print("\nPASS: structural/style checks clean. Funniness still requires editorial review.")
     return 0
 
 
