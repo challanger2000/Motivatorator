@@ -54,7 +54,7 @@ u"Finish it and put it out!",
 u"This track is going to make you famous!",
 
 // DEMOTIVATOR — 50 standalone comments
-u"How much longer is this going to take?",
+u"Are we going to be here all night?",
 u"Are you still on this?",
 u"How many times are you gonna hear that?",
 u"You're playing it from the top again?",
