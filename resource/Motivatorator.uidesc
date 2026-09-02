@@ -9,5 +9,6 @@
     <view class="CView" size="241,369,310,408" custom-view-name="ModeMotivator" transparent="true"/>
     <view class="CView" size="315,369,399,408" custom-view-name="ModeDemotivator" transparent="true"/>
     <view class="CView" size="404,369,470,408" custom-view-name="ModeMixed" transparent="true"/>
+    <view class="CView" size="500,369,574,408" custom-view-name="CharacterGnomi" transparent="true"/>
   </template>
 </vstgui-ui-description>
