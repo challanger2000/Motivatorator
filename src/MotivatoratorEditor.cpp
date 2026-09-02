@@ -61,8 +61,9 @@ VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attri
         if(*name=="CharacterView") return new CharacterView(VSTGUI::CRect(18.,82.,335.,352.),controller_);
         if(*name=="ModeMotivator") return new ParameterButtonView(VSTGUI::CRect(242.,368.,312.,409.),controller_,kModeId,0.0,VSTGUI::CColor(255,177,45,255));
         if(*name=="ModeDemotivator") return new ParameterButtonView(VSTGUI::CRect(315.,369.,399.,408.),controller_,kModeId,0.5,VSTGUI::CColor(230,56,36,255));
-        // MIXED alone: align its glow with the same inner-face geometry used by the accepted buttons.
-        if(*name=="ModeMixed") return new ParameterButtonView(VSTGUI::CRect(403.,369.,468.,408.),controller_,kModeId,1.0,VSTGUI::CColor(255,125,35,255));
+        // The glow function already insets by 2 px. Give MIXED the full baked-button bounds here
+        // instead of shrinking the view itself, so the visible glow lands on the actual button face.
+        if(*name=="ModeMixed") return new ParameterButtonView(VSTGUI::CRect(397.,367.,470.,410.),controller_,kModeId,1.0,VSTGUI::CColor(255,125,35,255));
         if(*name=="CharacterGnomi") return new ParameterButtonView(VSTGUI::CRect(500.,369.,574.,408.),controller_,kCharacterId,0.0,VSTGUI::CColor(255,156,38,255));
         if(*name=="CharacterRocky") return new ParameterButtonView(VSTGUI::CRect(579.,369.,653.,408.),controller_,kCharacterId,0.5,VSTGUI::CColor(255,156,38,255));
         if(*name=="CharacterDom") return new ParameterButtonView(VSTGUI::CRect(658.,369.,735.,408.),controller_,kCharacterId,1.0,VSTGUI::CColor(255,156,38,255));
