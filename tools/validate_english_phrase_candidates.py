@@ -20,7 +20,7 @@ CONTENT_FORBIDDEN = {
     "guitar", "guitars", "bass guitar", "drums", "drum", "piano", "synth",
     "synthesizer", "serum", "spire", "dune", "studio one", "ableton", "cubase",
     "logic", "fl studio", "reaper", "vst", "vst3", "plugin", "plugins",
-    "techno", "metal", "rock", "house",
+    "techno", "metal music", "rock music", "house music",
 }
 
 WATCH_OPENERS = {"okay", "damn", "shit", "hell", "holy", "wow"}
