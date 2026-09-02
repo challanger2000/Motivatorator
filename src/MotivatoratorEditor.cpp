@@ -62,17 +62,17 @@ private:
 static void drawButtonGlow(VSTGUI::CDrawContext* context,
                            VSTGUI::CRect rect,
                            const VSTGUI::CColor& color) {
-    // Match the dark inner face of the baked button instead of outlining the
-    // larger metal housing.  The previous glow was visibly too close to the bezel.
-    rect.inset(6., 5.);
+    // Match the visible inner button face from the 760x428 reference exactly.
+    // The previous 6/5 px inset sat visibly too far inside the baked button border.
+    rect.inset(2., 2.);
 
     VSTGUI::CColor fill = color;
-    fill.alpha = 34;
+    fill.alpha = 30;
     context->setFillColor(fill);
     context->drawRect(rect, VSTGUI::kDrawFilled);
 
     VSTGUI::CColor edge = color;
-    edge.alpha = 205;
+    edge.alpha = 210;
     context->setFrameColor(edge);
     context->setLineWidth(1.0);
     context->drawRect(rect, VSTGUI::kDrawStroked);
@@ -80,17 +80,20 @@ static void drawButtonGlow(VSTGUI::CDrawContext* context,
     auto inner = rect;
     inner.inset(2., 2.);
     VSTGUI::CColor innerEdge = color;
-    innerEdge.alpha = 72;
+    innerEdge.alpha = 64;
     context->setFrameColor(innerEdge);
     context->setLineWidth(1.0);
     context->drawRect(inner, VSTGUI::kDrawStroked);
 }
 
-class ModeButtonView final : public VSTGUI::CView {
+class ParameterButtonView final : public VSTGUI::CView {
 public:
-    ModeButtonView(const VSTGUI::CRect& size, EditController* controller, double value,
-                   const VSTGUI::CColor& glowColor)
-    : CView(size), controller_(controller), value_(value), glowColor_(glowColor) {
+    ParameterButtonView(const VSTGUI::CRect& size,
+                        EditController* controller,
+                        ParamID paramId,
+                        double value,
+                        const VSTGUI::CColor& glowColor)
+    : CView(size), controller_(controller), paramId_(paramId), value_(value), glowColor_(glowColor) {
         setMouseEnabled(true);
         timer_ = VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>(
             [this](VSTGUI::CVSTGUITimer*) { invalid(); }, 100);
@@ -102,7 +105,7 @@ public:
             return;
         }
 
-        const double current = controller_->getParamNormalized(kModeId);
+        const double current = controller_->getParamNormalized(paramId_);
         if (std::abs(current - value_) < 0.20)
             drawButtonGlow(context, getViewSize(), glowColor_);
 
@@ -113,46 +116,17 @@ public:
         if (!controller_)
             return VSTGUI::kMouseEventNotHandled;
 
-        controller_->beginEdit(kModeId);
-        controller_->setParamNormalized(kModeId, value_);
-        controller_->performEdit(kModeId, value_);
-        controller_->endEdit(kModeId);
+        controller_->beginEdit(paramId_);
+        controller_->setParamNormalized(paramId_, value_);
+        controller_->performEdit(paramId_, value_);
+        controller_->endEdit(paramId_);
         invalid();
         return VSTGUI::kMouseEventHandled;
     }
 
 private:
     EditController* controller_ {nullptr};
-    double value_ {0.0};
-    VSTGUI::CColor glowColor_;
-    VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
-};
-
-class CharacterIndicatorView final : public VSTGUI::CView {
-public:
-    CharacterIndicatorView(const VSTGUI::CRect& size, EditController* controller, double value,
-                           const VSTGUI::CColor& glowColor)
-    : CView(size), controller_(controller), value_(value), glowColor_(glowColor) {
-        setMouseEnabled(false);
-        timer_ = VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>(
-            [this](VSTGUI::CVSTGUITimer*) { invalid(); }, 100);
-    }
-
-    void draw(VSTGUI::CDrawContext* context) override {
-        if (!controller_) {
-            setDirty(false);
-            return;
-        }
-
-        const double current = controller_->getParamNormalized(kCharacterId);
-        if (std::abs(current - value_) < 0.20)
-            drawButtonGlow(context, getViewSize(), glowColor_);
-
-        setDirty(false);
-    }
-
-private:
-    EditController* controller_ {nullptr};
+    ParamID paramId_ {0};
     double value_ {0.0};
     VSTGUI::CColor glowColor_;
     VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
@@ -168,18 +142,26 @@ VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attri
     if (const auto name = attributes.getAttributeValue(VSTGUI::IUIDescription::kCustomViewName)) {
         if (*name == "CharacterView")
             return new CharacterView(VSTGUI::CRect(18., 82., 335., 352.), controller_);
+
         if (*name == "ModeMotivator")
-            return new ModeButtonView(VSTGUI::CRect(241., 369., 310., 408.), controller_, 0.0,
-                                      VSTGUI::CColor(255, 177, 45, 255));
+            return new ParameterButtonView(VSTGUI::CRect(241., 369., 310., 408.), controller_, kModeId, 0.0,
+                                           VSTGUI::CColor(255, 177, 45, 255));
         if (*name == "ModeDemotivator")
-            return new ModeButtonView(VSTGUI::CRect(315., 369., 399., 408.), controller_, 0.5,
-                                      VSTGUI::CColor(230, 56, 36, 255));
+            return new ParameterButtonView(VSTGUI::CRect(315., 369., 399., 408.), controller_, kModeId, 0.5,
+                                           VSTGUI::CColor(230, 56, 36, 255));
         if (*name == "ModeMixed")
-            return new ModeButtonView(VSTGUI::CRect(404., 369., 470., 408.), controller_, 1.0,
-                                      VSTGUI::CColor(255, 125, 35, 255));
+            return new ParameterButtonView(VSTGUI::CRect(404., 369., 470., 408.), controller_, kModeId, 1.0,
+                                           VSTGUI::CColor(255, 125, 35, 255));
+
         if (*name == "CharacterGnomi")
-            return new CharacterIndicatorView(VSTGUI::CRect(500., 369., 574., 408.), controller_, 0.0,
-                                              VSTGUI::CColor(255, 156, 38, 255));
+            return new ParameterButtonView(VSTGUI::CRect(500., 369., 574., 408.), controller_, kCharacterId, 0.0,
+                                           VSTGUI::CColor(255, 156, 38, 255));
+        if (*name == "CharacterRocky")
+            return new ParameterButtonView(VSTGUI::CRect(579., 369., 653., 408.), controller_, kCharacterId, 0.5,
+                                           VSTGUI::CColor(255, 156, 38, 255));
+        if (*name == "CharacterDom")
+            return new ParameterButtonView(VSTGUI::CRect(658., 369., 735., 408.), controller_, kCharacterId, 1.0,
+                                           VSTGUI::CColor(255, 156, 38, 255));
     }
     return VSTGUI::VST3Editor::createView(attributes, description);
 }
