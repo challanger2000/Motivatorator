@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <vstgui-ui-description version="1">
   <bitmaps>
-    <bitmap name="mainBackground" path="motivatorator_main_bg.png"/>
+    <bitmap name="mainBackground" path="motivatorator_main_bg_rgb.png"/>
   </bitmaps>
 
   <template name="view" class="CViewContainer" size="760,430" bitmap="mainBackground">
