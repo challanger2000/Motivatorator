@@ -129,7 +129,10 @@ struct VoicePrototype::Impl {
     static void applyCharacterDSP(std::vector<float>& audio, double sampleRate, int character) {
         if (audio.empty() || sampleRate < 8000.0) return;
 
-        const double pitchFactor = character == 0 ? 0.90 : (character == 1 ? 0.80 : 0.72);
+        // With a real male base voice available, GNOMI can now be pushed clearly
+        // upward instead of trying to hide a female source. ROCKY stays where it
+        // was; D.O.M. gets another step downward for more weight.
+        const double pitchFactor = character == 0 ? 1.10 : (character == 1 ? 0.80 : 0.66);
         audio = resamplePitch(audio, pitchFactor);
 
         const size_t originalSize = audio.size();
