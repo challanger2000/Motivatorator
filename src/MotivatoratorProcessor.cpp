@@ -135,7 +135,7 @@ void MotivatoratorProcessor::requestVoicePrototype(){
     const TChar* source=language_==0?phrase.de:phrase.en;
     std::u16string text;
     if(source){for(const TChar* p=source;*p;++p) text.push_back(static_cast<char16_t>(*p));}
-    voicePrototype_.request(text);
+    voicePrototype_.request(text, language_, character_);
 }
 
 void MotivatoratorProcessor::emitPhrase(ProcessData& data){
