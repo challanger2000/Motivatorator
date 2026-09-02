@@ -4,6 +4,6 @@
     <bitmap name="mainBackground" path="motivatorator_main_bg_rgb.png"/>
   </bitmaps>
 
-  <template name="view" class="CViewContainer" size="760,430" bitmap="mainBackground">
+  <template name="view" class="CViewContainer" size="760,380" bitmap="mainBackground">
   </template>
 </vstgui-ui-description>
