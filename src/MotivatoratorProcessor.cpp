@@ -78,8 +78,6 @@ tresult PLUGIN_API MotivatoratorProcessor::setState(IBStream* state) {
     if (!stream.readInt32(value)) return kResultFalse; motivatorStep_=(value==53)?53:37;
     if (!stream.readInt32(value)) return kResultFalse; demotivatorStep_=(value==37)?37:53;
     if (!stream.readInt32(value)) return kResultFalse; currentPhraseGlobal_=std::clamp(value,0,(int)(kPhraseCount*2)-1);
-    // The two sound fields were appended to state v1. Old projects simply end here
-    // and keep the new defaults (sound on, 50% volume).
     int32 soundValue=1;
     if (stream.readInt32(soundValue)) messageSound_=soundValue!=0;
     double volumeValue=0.5;
@@ -140,7 +138,8 @@ void MotivatoratorProcessor::resetIntervalCounter(){
 
 void MotivatoratorProcessor::triggerPing(){
     if(!messageSound_ || pingVolume_<=0.0) return;
-    pingSamplesTotal_=std::max<int64>(1,(int64)(sampleRate_*0.09));
+    // Keep the direct ping short, but leave enough time for a tiny room tail.
+    pingSamplesTotal_=std::max<int64>(1,(int64)(sampleRate_*0.20));
     pingSamplesRemaining_=pingSamplesTotal_;
     pingPhase_=0.0;
 }
@@ -151,12 +150,26 @@ void MotivatoratorProcessor::mixPing(ProcessData& data){
     const int64 startRemaining=pingSamplesRemaining_;
     const int32 count=std::min<int64>(data.numSamples,startRemaining);
     const double phaseInc=2.0*kPi*1650.0/sampleRate_;
-    const double baseGain=0.22*pingVolume_;
+    // Previous maximum was 0.22. 0.44 is +6.02 dB, giving the control useful headroom.
+    const double baseGain=0.44*pingVolume_;
     for(int32 i=0;i<count;++i){
-        const double progress=1.0-(double)pingSamplesRemaining_/(double)pingSamplesTotal_;
-        const double attack=std::min(1.0,progress/0.025);
-        const double decay=std::exp(-5.5*progress);
-        const double sample=std::sin(pingPhase_)*baseGain*attack*decay;
+        const double elapsed=1.0-(double)pingSamplesRemaining_/(double)pingSamplesTotal_;
+        const double elapsedSeconds=elapsed*0.20;
+
+        // Original dry notification ping: essentially finished after ~90 ms.
+        const double dryProgress=std::min(1.0,elapsedSeconds/0.09);
+        const double attack=std::min(1.0,dryProgress/0.025);
+        const double dryDecay=std::exp(-5.5*dryProgress);
+        const double dry=(elapsedSeconds<=0.09)?std::sin(pingPhase_)*baseGain*attack*dryDecay:0.0;
+
+        // Very small synthetic room tail. Three low-level, slightly detuned reflections
+        // avoid a distinct echo while adding a short shimmer behind the ping.
+        const double roomFade=std::exp(-18.0*elapsedSeconds);
+        const double roomAttack=std::min(1.0,elapsedSeconds/0.012);
+        const double reflections=(std::sin(pingPhase_*0.997+0.7)+std::sin(pingPhase_*1.013+1.9)+std::sin(pingPhase_*0.983+3.1))/3.0;
+        const double room=reflections*baseGain*0.12*roomAttack*roomFade;
+        const double sample=dry+room;
+
         if(data.symbolicSampleSize==kSample32){
             for(int32 c=0;c<out.numChannels;++c) if(out.channelBuffers32[c]) out.channelBuffers32[c][i]+=static_cast<float>(sample);
         } else if(data.symbolicSampleSize==kSample64){
