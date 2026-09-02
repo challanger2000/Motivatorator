@@ -4,7 +4,7 @@
 
 // MOTIVATOR — 50 standalone comments
 u"Das klingt mega!",
-u"Das ist heute richtig stark!",
+u"Das ist heute richtig mächtig!",
 u"Wunderschön!",
 u"Ja, das ist perfekt!",
 u"Das läuft ja wie von selbst!",
@@ -15,7 +15,7 @@ u"Das hat richtig Energie!",
 u"Das geht sofort richtig los!",
 u"Das klingt verdammt gut!",
 u"Genau so passt es!",
-u"Ja! Das ist es!",
+u"Ja! Genau das war's!",
 u"Das macht richtig Bock!",
 u"Da kommt sofort Stimmung auf!",
 u"Das ist fertig! Ganz sicher!",
