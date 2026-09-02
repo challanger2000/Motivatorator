@@ -56,6 +56,7 @@ VSTGUI::CView* MotivatoratorEditor::verifyView(VSTGUI::CView* view, const VSTGUI
             if (auto* display = dynamic_cast<VSTGUI::CParamDisplay*>(view)) {
                 phraseTicker_ = display;
                 phraseTicker_->setMouseEnabled(false);
+                phraseTicker_->setTransparency(true);
                 lastPhraseValue_ = -1.f;
                 if (!tickerTimer_)
                     tickerTimer_ = new VSTGUI::CVSTGUITimer([this](VSTGUI::CVSTGUITimer*) { tickTicker(); }, 40, true);
@@ -85,8 +86,9 @@ void MotivatoratorEditor::resetTicker() {
     const auto chars = textLength(phraseForGlobalIndex(index));
     const VSTGUI::CCoord estimatedWidth = std::max<VSTGUI::CCoord>(240.0, static_cast<VSTGUI::CCoord>(chars) * 11.5 + 80.0);
 
-    const auto parentRect = parent->getViewSize();
-    VSTGUI::CRect r(parentRect.getWidth(), 0.0, parentRect.getWidth() + estimatedWidth, parentRect.getHeight());
+    const VSTGUI::CCoord viewportWidth = parent->getWidth();
+    const VSTGUI::CCoord viewportHeight = parent->getHeight();
+    VSTGUI::CRect r(viewportWidth, 0.0, viewportWidth + estimatedWidth, viewportHeight);
     phraseTicker_->setViewSize(r);
     phraseTicker_->setMouseableArea(r);
     phraseTicker_->invalid();
@@ -104,16 +106,20 @@ void MotivatoratorEditor::tickTicker() {
         return;
     }
 
-    auto r = phraseTicker_->getViewSize();
-    r.offset(-2.0, 0.0);
-    if (r.right < 0.0) {
+    auto oldRect = phraseTicker_->getViewSize();
+    auto newRect = oldRect;
+    newRect.offset(-2.0, 0.0);
+    if (newRect.right < 0.0) {
         resetTicker();
         return;
     }
 
-    phraseTicker_->setViewSize(r);
-    phraseTicker_->setMouseableArea(r);
-    parent->invalid();
+    phraseTicker_->setViewSize(newRect);
+    phraseTicker_->setMouseableArea(newRect);
+
+    // Only invalidate the small CRT viewport. Invalidating the moving child itself can
+    // propagate its oversized scrolling rectangle outside the intended clip area in some hosts.
+    parent->invalidRect(VSTGUI::CRect(0.0, 0.0, parent->getWidth(), parent->getHeight()));
 }
 
 void MotivatoratorEditor::valueChanged(VSTGUI::CControl* control) {
