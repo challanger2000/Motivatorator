@@ -84,7 +84,6 @@ struct VoicePrototype::Impl {
         IEnumSpObjectTokens* enumerator = nullptr;
         if (FAILED(SpEnumTokens(SPCAT_VOICES, languageFilter, nullptr, &enumerator)) || !enumerator)
             return nullptr;
-
         ISpObjectToken* result = nullptr;
         ISpObjectToken* token = nullptr;
         ULONG fetched = 0;
@@ -99,10 +98,7 @@ struct VoicePrototype::Impl {
                     break;
                 }
             }
-            if (token) {
-                token->Release();
-                token = nullptr;
-            }
+            if (token) { token->Release(); token = nullptr; }
         }
         if (token) token->Release();
         enumerator->Release();
@@ -129,7 +125,9 @@ struct VoicePrototype::Impl {
     static void applyCharacterDSP(std::vector<float>& audio, double sampleRate, int character) {
         if (audio.empty() || sampleRate < 8000.0) return;
 
-        const double pitchFactor = character == 0 ? 1.10 : (character == 1 ? 0.80 : 0.66);
+        // GNOMI keeps the higher pitch but gets a slower SAPI delivery below.
+        // ROCKY is deliberately unchanged; D.O.M. moves one careful step lower.
+        const double pitchFactor = character == 0 ? 1.10 : (character == 1 ? 0.80 : 0.60);
         audio = resamplePitch(audio, pitchFactor);
 
         const size_t originalSize = audio.size();
@@ -146,9 +144,6 @@ struct VoicePrototype::Impl {
 
         std::vector<float> delay(roomDelay, 0.0f);
         size_t delayPos = 0;
-
-        // ROCKY also gets a tiny comb resonator. It creates a metallic shell around
-        // the intelligible voice instead of merely increasing tremolo/robot wobble.
         size_t metalDelay = static_cast<size_t>(sampleRate * 0.0029);
         if (metalDelay < 1u) metalDelay = 1u;
         std::vector<float> metal(character == 1 ? metalDelay : 1u, 0.0f);
@@ -166,7 +161,6 @@ struct VoicePrototype::Impl {
             float x = audio[i];
             low += alpha * (x - low);
             lowDark += darkAlpha * (x - lowDark);
-
             if (character == 0) {
                 const float presence = x - low;
                 x = 0.92f * x + 0.62f * presence;
@@ -175,25 +169,19 @@ struct VoicePrototype::Impl {
                 const float mod = static_cast<float>(0.68 + 0.32 * std::sin(robotPhase));
                 robotPhase += robotStep;
                 if (robotPhase > 6.283185307179586) robotPhase -= 6.283185307179586;
-
                 const float resonant = metal[metalPos];
                 const float body = (0.62f * x + 0.38f * low) * mod;
                 metal[metalPos] = body + resonant * 0.57f;
                 metalPos = (metalPos + 1u) % metal.size();
-
-                // Keep speech clear, but mix enough of the short resonator to make
-                // ROCKY sound distinctly metallic rather than just pitch-shifted.
                 x = 0.76f * body + 0.24f * resonant;
                 x = std::tanh(x * drive) / std::tanh(drive);
             } else {
                 x = 0.18f * x + 0.82f * lowDark;
                 x = std::tanh(x * drive) / std::tanh(drive);
             }
-
             const float delayed = delay[delayPos];
             delay[delayPos] = x + delayed * feedback;
             delayPos = (delayPos + 1u) % delay.size();
-
             float y = x + delayed * wet;
             if (y > 0.98f) y = 0.98f;
             if (y < -0.98f) y = -0.98f;
@@ -219,26 +207,21 @@ struct VoicePrototype::Impl {
                                     reinterpret_cast<void**>(&voice)))) { cleanup(); return {}; }
 
         const wchar_t* languageFilter = language == 0 ? L"Language=407" : L"Language=409";
-        if (language == 0)
-            voiceToken = findVoiceByDescription(languageFilter, L"Stefan");
-
+        if (language == 0) voiceToken = findVoiceByDescription(languageFilter, L"Stefan");
         if (!voiceToken) {
             const wchar_t* maleFilter = language == 0 ? L"Language=407;Gender=Male" : L"Language=409;Gender=Male";
             SpFindBestToken(SPCAT_VOICES, maleFilter, nullptr, &voiceToken);
         }
-
-        if (!voiceToken)
-            SpFindBestToken(SPCAT_VOICES, languageFilter, nullptr, &voiceToken);
-
+        if (!voiceToken) SpFindBestToken(SPCAT_VOICES, languageFilter, nullptr, &voiceToken);
         if (voiceToken) voice->SetVoice(voiceToken);
 
-        const long speakingRate = character == 0 ? 4L : (character == 1 ? 2L : 1L);
+        // GNOMI was a little too rushed at +4. +3 keeps him lively without racing.
+        const long speakingRate = character == 0 ? 3L : (character == 1 ? 2L : 1L);
         voice->SetRate(speakingRate);
 
         if (FAILED(CreateStreamOnHGlobal(nullptr, TRUE, &memoryStream))) { cleanup(); return {}; }
         if (FAILED(CoCreateInstance(CLSID_SpStream, nullptr, CLSCTX_INPROC_SERVER, IID_ISpStream,
                                     reinterpret_cast<void**>(&speechStream)))) { cleanup(); return {}; }
-
         waveFormat = static_cast<WAVEFORMATEX*>(CoTaskMemAlloc(sizeof(WAVEFORMATEX)));
         if (!waveFormat) { cleanup(); return {}; }
         std::memset(waveFormat, 0, sizeof(WAVEFORMATEX));
@@ -249,7 +232,6 @@ struct VoicePrototype::Impl {
         waveFormat->nBlockAlign = static_cast<WORD>(waveFormat->nChannels * waveFormat->wBitsPerSample / 8);
         waveFormat->nAvgBytesPerSec = waveFormat->nSamplesPerSec * waveFormat->nBlockAlign;
         waveFormat->cbSize = 0;
-
         if (FAILED(speechStream->SetBaseStream(memoryStream, SPDFID_WaveFormatEx, waveFormat))) { cleanup(); return {}; }
         if (FAILED(voice->SetOutput(speechStream, TRUE))) { cleanup(); return {}; }
 
@@ -267,9 +249,7 @@ struct VoicePrototype::Impl {
         memoryStream->Seek(zero, STREAM_SEEK_SET, nullptr);
         std::vector<int16_t> pcm(byteCount / sizeof(int16_t));
         ULONG bytesRead = 0;
-        if (FAILED(memoryStream->Read(pcm.data(), static_cast<ULONG>(pcm.size() * sizeof(int16_t)), &bytesRead))) {
-            cleanup(); return {};
-        }
+        if (FAILED(memoryStream->Read(pcm.data(), static_cast<ULONG>(pcm.size() * sizeof(int16_t)), &bytesRead))) { cleanup(); return {}; }
         pcm.resize(bytesRead / sizeof(int16_t));
         cleanup();
         if (pcm.empty()) return {};
@@ -292,7 +272,6 @@ struct VoicePrototype::Impl {
             const double sample = pcm[a] * (1.0 - frac) + pcm[b] * frac;
             (*out)[i] = static_cast<float>(sample / 32768.0);
         }
-
         applyCharacterDSP(*out, target, character);
         return out;
     }
