@@ -5,6 +5,6 @@
   </bitmaps>
 
   <template name="view" class="CViewContainer" size="760,428" bitmap="mainBackground">
-    <view class="CView" size="0,78,390,378" custom-view-name="CharacterView" transparent="true"/>
+    <view class="CView" size="18,92,318,332" custom-view-name="CharacterView" transparent="true"/>
   </template>
 </vstgui-ui-description>
