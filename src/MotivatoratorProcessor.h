@@ -13,6 +13,7 @@ static const FUID MotivatoratorControllerUID(0x4D4F5449, 0x5641544F, 0x52435430,
 
 enum MotivatoratorParams : ParamID {
     kModeId = 100,
+    // 101 intentionally remains unused to avoid reusing the legacy NEXT parameter ID.
     kNextId = 101,
     kMuteId = 102,
     kOptionsId = 103,
@@ -58,8 +59,6 @@ private:
     int interval_ {2};
     int character_ {0};
     bool muted_ {false};
-    bool nextState_ {false};
-    bool mixedNextPositive_ {true};
     bool phrasePositive_ {true};
     bool needsPhraseEmit_ {true};
     bool messageSound_ {true};
