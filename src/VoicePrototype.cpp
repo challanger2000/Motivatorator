@@ -129,34 +129,38 @@ struct VoicePrototype::Impl {
     static void applyCharacterDSP(std::vector<float>& audio, double sampleRate, int character) {
         if (audio.empty() || sampleRate < 8000.0) return;
 
-        // With a real male base voice available, GNOMI can now be pushed clearly
-        // upward instead of trying to hide a female source. ROCKY stays where it
-        // was; D.O.M. gets another step downward for more weight.
         const double pitchFactor = character == 0 ? 1.10 : (character == 1 ? 0.80 : 0.66);
         audio = resamplePitch(audio, pitchFactor);
 
         const size_t originalSize = audio.size();
-        const double tailSeconds = character == 2 ? 0.24 : (character == 1 ? 0.13 : 0.11);
+        const double tailSeconds = character == 2 ? 0.24 : (character == 1 ? 0.15 : 0.11);
         const size_t tailSamples = static_cast<size_t>(sampleRate * tailSeconds);
         audio.resize(originalSize + tailSamples, 0.0f);
 
-        const float drive = character == 0 ? 1.42f : (character == 1 ? 1.24f : 1.62f);
-        const float wet = character == 0 ? 0.09f : (character == 1 ? 0.14f : 0.20f);
-        const double roomMs = character == 0 ? 36.0 : (character == 1 ? 27.0 : 72.0);
+        const float drive = character == 0 ? 1.42f : (character == 1 ? 1.34f : 1.62f);
+        const float wet = character == 0 ? 0.09f : (character == 1 ? 0.17f : 0.20f);
+        const double roomMs = character == 0 ? 36.0 : (character == 1 ? 19.0 : 72.0);
         size_t roomDelay = static_cast<size_t>(sampleRate * roomMs / 1000.0);
         if (roomDelay < 1u) roomDelay = 1u;
-        const float feedback = character == 0 ? 0.19f : (character == 1 ? 0.27f : 0.39f);
+        const float feedback = character == 0 ? 0.19f : (character == 1 ? 0.34f : 0.39f);
 
         std::vector<float> delay(roomDelay, 0.0f);
         size_t delayPos = 0;
 
+        // ROCKY also gets a tiny comb resonator. It creates a metallic shell around
+        // the intelligible voice instead of merely increasing tremolo/robot wobble.
+        size_t metalDelay = static_cast<size_t>(sampleRate * 0.0029);
+        if (metalDelay < 1u) metalDelay = 1u;
+        std::vector<float> metal(character == 1 ? metalDelay : 1u, 0.0f);
+        size_t metalPos = 0;
+
         float low = 0.0f;
         float lowDark = 0.0f;
-        const double cutoff = character == 0 ? 2200.0 : (character == 1 ? 3100.0 : 1450.0);
+        const double cutoff = character == 0 ? 2200.0 : (character == 1 ? 3600.0 : 1450.0);
         const float alpha = static_cast<float>(1.0 - std::exp(-6.283185307179586 * cutoff / sampleRate));
         const float darkAlpha = static_cast<float>(1.0 - std::exp(-6.283185307179586 * 900.0 / sampleRate));
         double robotPhase = 0.0;
-        const double robotStep = 6.283185307179586 * 52.0 / sampleRate;
+        const double robotStep = 6.283185307179586 * 67.0 / sampleRate;
 
         for (size_t i = 0; i < audio.size(); ++i) {
             float x = audio[i];
@@ -168,10 +172,18 @@ struct VoicePrototype::Impl {
                 x = 0.92f * x + 0.62f * presence;
                 x = std::tanh(x * drive) / std::tanh(drive);
             } else if (character == 1) {
-                const float mod = static_cast<float>(0.72 + 0.28 * std::sin(robotPhase));
+                const float mod = static_cast<float>(0.68 + 0.32 * std::sin(robotPhase));
                 robotPhase += robotStep;
                 if (robotPhase > 6.283185307179586) robotPhase -= 6.283185307179586;
-                x = (0.58f * x + 0.42f * low) * mod;
+
+                const float resonant = metal[metalPos];
+                const float body = (0.62f * x + 0.38f * low) * mod;
+                metal[metalPos] = body + resonant * 0.57f;
+                metalPos = (metalPos + 1u) % metal.size();
+
+                // Keep speech clear, but mix enough of the short resonator to make
+                // ROCKY sound distinctly metallic rather than just pitch-shifted.
+                x = 0.76f * body + 0.24f * resonant;
                 x = std::tanh(x * drive) / std::tanh(drive);
             } else {
                 x = 0.18f * x + 0.82f * lowDark;
@@ -207,20 +219,14 @@ struct VoicePrototype::Impl {
                                     reinterpret_cast<void**>(&voice)))) { cleanup(); return {}; }
 
         const wchar_t* languageFilter = language == 0 ? L"Language=407" : L"Language=409";
-
-        // Windows 11 can expose modern voices in the UI even when a generic
-        // Gender=Male SAPI filter does not pick them. For German, explicitly
-        // locate Microsoft Stefan by the human-readable token description.
         if (language == 0)
             voiceToken = findVoiceByDescription(languageFilter, L"Stefan");
 
-        // Generic male fallback (also used for English).
         if (!voiceToken) {
             const wchar_t* maleFilter = language == 0 ? L"Language=407;Gender=Male" : L"Language=409;Gender=Male";
             SpFindBestToken(SPCAT_VOICES, maleFilter, nullptr, &voiceToken);
         }
 
-        // Last fallback: any voice in the requested language.
         if (!voiceToken)
             SpFindBestToken(SPCAT_VOICES, languageFilter, nullptr, &voiceToken);
 
