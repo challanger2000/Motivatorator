@@ -42,9 +42,40 @@ private:
     VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
 };
 static void drawButtonGlow(VSTGUI::CDrawContext* context,VSTGUI::CRect rect,const VSTGUI::CColor& color){
-    rect.inset(2.,2.); VSTGUI::CColor fill=color; fill.alpha=30; context->setFillColor(fill); context->drawRect(rect,VSTGUI::kDrawFilled);
-    VSTGUI::CColor edge=color; edge.alpha=210; context->setFrameColor(edge); context->setLineWidth(1.0); context->drawRect(rect,VSTGUI::kDrawStroked);
-    auto inner=rect; inner.inset(2.,2.); VSTGUI::CColor innerEdge=color; innerEdge.alpha=64; context->setFrameColor(innerEdge); context->drawRect(inner,VSTGUI::kDrawStroked);
+    // Stronger illuminated state: more light in the button face plus several soft inner halos.
+    rect.inset(2.,2.);
+
+    VSTGUI::CColor fill=color;
+    fill.alpha=58;
+    context->setFillColor(fill);
+    context->drawRect(rect,VSTGUI::kDrawFilled);
+
+    VSTGUI::CColor edge=color;
+    edge.alpha=245;
+    context->setFrameColor(edge);
+    context->setLineWidth(1.0);
+    context->drawRect(rect,VSTGUI::kDrawStroked);
+
+    auto halo1=rect;
+    halo1.inset(1.,1.);
+    VSTGUI::CColor halo1Color=color;
+    halo1Color.alpha=150;
+    context->setFrameColor(halo1Color);
+    context->drawRect(halo1,VSTGUI::kDrawStroked);
+
+    auto halo2=rect;
+    halo2.inset(3.,3.);
+    VSTGUI::CColor halo2Color=color;
+    halo2Color.alpha=88;
+    context->setFrameColor(halo2Color);
+    context->drawRect(halo2,VSTGUI::kDrawStroked);
+
+    auto halo3=rect;
+    halo3.inset(5.,5.);
+    VSTGUI::CColor halo3Color=color;
+    halo3Color.alpha=42;
+    context->setFrameColor(halo3Color);
+    context->drawRect(halo3,VSTGUI::kDrawStroked);
 }
 class ParameterButtonView final : public VSTGUI::CView {
 public:
@@ -61,8 +92,6 @@ VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attri
         if(*name=="CharacterView") return new CharacterView(VSTGUI::CRect(18.,82.,335.,352.),controller_);
         if(*name=="ModeMotivator") return new ParameterButtonView(VSTGUI::CRect(242.,368.,312.,409.),controller_,kModeId,0.0,VSTGUI::CColor(255,177,45,255));
         if(*name=="ModeDemotivator") return new ParameterButtonView(VSTGUI::CRect(315.,369.,399.,408.),controller_,kModeId,0.5,VSTGUI::CColor(230,56,36,255));
-        // The glow function already insets by 2 px. Give MIXED the full baked-button bounds here
-        // instead of shrinking the view itself, so the visible glow lands on the actual button face.
         if(*name=="ModeMixed") return new ParameterButtonView(VSTGUI::CRect(397.,367.,470.,410.),controller_,kModeId,1.0,VSTGUI::CColor(255,125,35,255));
         if(*name=="CharacterGnomi") return new ParameterButtonView(VSTGUI::CRect(500.,369.,574.,408.),controller_,kCharacterId,0.0,VSTGUI::CColor(255,156,38,255));
         if(*name=="CharacterRocky") return new ParameterButtonView(VSTGUI::CRect(579.,369.,653.,408.),controller_,kCharacterId,0.5,VSTGUI::CColor(255,156,38,255));
