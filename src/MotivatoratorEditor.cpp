@@ -1,6 +1,8 @@
 #include "MotivatoratorEditor.h"
 #include "MotivatoratorProcessor.h"
 #include "vstgui/lib/cbitmap.h"
+#include "vstgui/lib/ccolor.h"
+#include "vstgui/lib/cdrawcontext.h"
 #include "vstgui/lib/cvstguitimer.h"
 #include "vstgui/uidescription/uiattributes.h"
 #include <algorithm>
@@ -17,9 +19,8 @@ public:
         positive_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_positive.png"));
         negative_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_negative.png"));
 
-        // The uploaded cutouts are roughly 1290x1210 px.  At 4.5x they render
-        // about 289x270 logical pixels, i.e. essentially the accepted height,
-        // but now the complete width (including the extended hand) is visible.
+        // The uploaded cutouts are roughly 1290x1210 px. At 4.5x they render
+        // about 289x270 logical pixels and fit the accepted GNOMI position.
         if (positive_ && positive_->getPlatformBitmap())
             positive_->getPlatformBitmap()->setScaleFactor(4.5);
         if (negative_ && negative_->getPlatformBitmap())
@@ -47,12 +48,9 @@ public:
             useNegative = toneValue >= 0.5;
 
         auto bitmap = useNegative ? negative_ : positive_;
-        if (bitmap) {
-            // Important: the destination is deliberately wider than the old 270 px
-            // character slot. CBitmap draws at its logical size and clips to this rect,
-            // so the full transparent cutout can now reach across the CRT bezel.
+        if (bitmap)
             bitmap->draw(context, getViewSize(), VSTGUI::CPoint(0., 0.), 1.f);
-        }
+
         setDirty(false);
     }
 
@@ -63,14 +61,53 @@ private:
     VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
 };
 
-class ModeHitView final : public VSTGUI::CView {
+class ModeButtonView final : public VSTGUI::CView {
 public:
-    ModeHitView(const VSTGUI::CRect& size, EditController* controller, double value)
-    : CView(size), controller_(controller), value_(value) {
+    ModeButtonView(const VSTGUI::CRect& size, EditController* controller, double value,
+                   const VSTGUI::CColor& glowColor)
+    : CView(size), controller_(controller), value_(value), glowColor_(glowColor) {
         setMouseEnabled(true);
+        timer_ = VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>(
+            [this](VSTGUI::CVSTGUITimer*) { invalid(); }, 100);
     }
 
-    void draw(VSTGUI::CDrawContext*) override { setDirty(false); }
+    void draw(VSTGUI::CDrawContext* context) override {
+        if (!controller_) {
+            setDirty(false);
+            return;
+        }
+
+        const double current = controller_->getParamNormalized(kModeId);
+        const bool active = std::abs(current - value_) < 0.20;
+
+        if (active) {
+            auto r = getViewSize();
+            r.inset(3., 4.);
+
+            // Soft inner glow over the labels already painted into the background.
+            VSTGUI::CColor soft = glowColor_;
+            soft.alpha = 42;
+            context->setFillColor(soft);
+            context->drawRect(r, VSTGUI::kDrawFilled);
+
+            // Bright border gives immediate, unambiguous active-state feedback.
+            VSTGUI::CColor edge = glowColor_;
+            edge.alpha = 220;
+            context->setFrameColor(edge);
+            context->setLineWidth(1.6);
+            context->drawRect(r, VSTGUI::kDrawStroked);
+
+            auto inner = r;
+            inner.inset(2., 2.);
+            VSTGUI::CColor innerEdge = glowColor_;
+            innerEdge.alpha = 95;
+            context->setFrameColor(innerEdge);
+            context->setLineWidth(1.0);
+            context->drawRect(inner, VSTGUI::kDrawStroked);
+        }
+
+        setDirty(false);
+    }
 
     VSTGUI::CMouseEventResult onMouseDown(VSTGUI::CPoint&, const VSTGUI::CButtonState&) override {
         if (!controller_)
@@ -87,6 +124,8 @@ public:
 private:
     EditController* controller_ {nullptr};
     double value_ {0.0};
+    VSTGUI::CColor glowColor_;
+    VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
 };
 
 } // namespace
@@ -100,11 +139,14 @@ VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attri
         if (*name == "CharacterView")
             return new CharacterView(VSTGUI::CRect(18., 82., 335., 352.), controller_);
         if (*name == "ModeMotivator")
-            return new ModeHitView(VSTGUI::CRect(241., 369., 310., 408.), controller_, 0.0);
+            return new ModeButtonView(VSTGUI::CRect(241., 369., 310., 408.), controller_, 0.0,
+                                      VSTGUI::CColor(255, 177, 45, 255));
         if (*name == "ModeDemotivator")
-            return new ModeHitView(VSTGUI::CRect(315., 369., 399., 408.), controller_, 0.5);
+            return new ModeButtonView(VSTGUI::CRect(315., 369., 399., 408.), controller_, 0.5,
+                                      VSTGUI::CColor(230, 56, 36, 255));
         if (*name == "ModeMixed")
-            return new ModeHitView(VSTGUI::CRect(404., 369., 470., 408.), controller_, 1.0);
+            return new ModeButtonView(VSTGUI::CRect(404., 369., 470., 408.), controller_, 1.0,
+                                      VSTGUI::CColor(255, 125, 35, 255));
     }
     return VSTGUI::VST3Editor::createView(attributes, description);
 }
