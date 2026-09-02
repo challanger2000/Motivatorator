@@ -80,6 +80,35 @@ struct VoicePrototype::Impl {
     }
 
 #ifdef _WIN32
+    static ISpObjectToken* findVoiceByDescription(const wchar_t* languageFilter, const wchar_t* needle) {
+        IEnumSpObjectTokens* enumerator = nullptr;
+        if (FAILED(SpEnumTokens(SPCAT_VOICES, languageFilter, nullptr, &enumerator)) || !enumerator)
+            return nullptr;
+
+        ISpObjectToken* result = nullptr;
+        ISpObjectToken* token = nullptr;
+        ULONG fetched = 0;
+        while (enumerator->Next(1, &token, &fetched) == S_OK && fetched == 1) {
+            WCHAR* description = nullptr;
+            if (SUCCEEDED(SpGetDescription(token, &description)) && description) {
+                std::wstring desc(description);
+                CoTaskMemFree(description);
+                if (desc.find(needle) != std::wstring::npos) {
+                    result = token;
+                    token = nullptr;
+                    break;
+                }
+            }
+            if (token) {
+                token->Release();
+                token = nullptr;
+            }
+        }
+        if (token) token->Release();
+        enumerator->Release();
+        return result;
+    }
+
     static std::vector<float> resamplePitch(const std::vector<float>& input, double factor) {
         if (input.empty() || factor <= 0.01) return input;
         size_t outCount = static_cast<size_t>(static_cast<double>(input.size()) / factor);
@@ -100,10 +129,6 @@ struct VoicePrototype::Impl {
     static void applyCharacterDSP(std::vector<float>& audio, double sampleRate, int character) {
         if (audio.empty() || sampleRate < 8000.0) return;
 
-        // Do the expensive/creative work only once on the worker thread. This
-        // deliberately does not depend on Windows exposing a suitable male voice.
-        // Pitch factors below 1.0 lower the voice. GNOMI stays the least low and
-        // gets brightness back afterwards, so he remains small/cheeky rather than huge.
         const double pitchFactor = character == 0 ? 0.90 : (character == 1 ? 0.80 : 0.72);
         audio = resamplePitch(audio, pitchFactor);
 
@@ -136,20 +161,16 @@ struct VoicePrototype::Impl {
             lowDark += darkAlpha * (x - lowDark);
 
             if (character == 0) {
-                // GNOMI: lowered enough to lose the obvious female character, then
-                // brightened and roughed up so he still sounds small, old and cheeky.
                 const float presence = x - low;
                 x = 0.92f * x + 0.62f * presence;
                 x = std::tanh(x * drive) / std::tanh(drive);
             } else if (character == 1) {
-                // ROCKY: clearly lower plus audible metallic amplitude modulation.
                 const float mod = static_cast<float>(0.72 + 0.28 * std::sin(robotPhase));
                 robotPhase += robotStep;
                 if (robotPhase > 6.283185307179586) robotPhase -= 6.283185307179586;
                 x = (0.58f * x + 0.42f * low) * mod;
                 x = std::tanh(x * drive) / std::tanh(drive);
             } else {
-                // D.O.M.: substantially lower, darker and more saturated.
                 x = 0.18f * x + 0.82f * lowDark;
                 x = std::tanh(x * drive) / std::tanh(drive);
             }
@@ -182,18 +203,26 @@ struct VoicePrototype::Impl {
         if (FAILED(CoCreateInstance(CLSID_SpVoice, nullptr, CLSCTX_INPROC_SERVER, IID_ISpVoice,
                                     reinterpret_cast<void**>(&voice)))) { cleanup(); return {}; }
 
-        // Prefer a matching male voice when Windows actually exposes one. The
-        // character DSP below no longer depends on this succeeding.
-        const wchar_t* maleFilter = language == 0 ? L"Language=407;Gender=Male" : L"Language=409;Gender=Male";
         const wchar_t* languageFilter = language == 0 ? L"Language=407" : L"Language=409";
-        if (FAILED(SpFindBestToken(SPCAT_VOICES, maleFilter, nullptr, &voiceToken)) || !voiceToken) {
-            if (voiceToken) { voiceToken->Release(); voiceToken = nullptr; }
-            SpFindBestToken(SPCAT_VOICES, languageFilter, nullptr, &voiceToken);
+
+        // Windows 11 can expose modern voices in the UI even when a generic
+        // Gender=Male SAPI filter does not pick them. For German, explicitly
+        // locate Microsoft Stefan by the human-readable token description.
+        if (language == 0)
+            voiceToken = findVoiceByDescription(languageFilter, L"Stefan");
+
+        // Generic male fallback (also used for English).
+        if (!voiceToken) {
+            const wchar_t* maleFilter = language == 0 ? L"Language=407;Gender=Male" : L"Language=409;Gender=Male";
+            SpFindBestToken(SPCAT_VOICES, maleFilter, nullptr, &voiceToken);
         }
+
+        // Last fallback: any voice in the requested language.
+        if (!voiceToken)
+            SpFindBestToken(SPCAT_VOICES, languageFilter, nullptr, &voiceToken);
+
         if (voiceToken) voice->SetVoice(voiceToken);
 
-        // Rate compensates partly for the later downward pitch resampling so the
-        // characters remain conversational instead of becoming excessively slow.
         const long speakingRate = character == 0 ? 4L : (character == 1 ? 2L : 1L);
         voice->SetRate(speakingRate);
 
