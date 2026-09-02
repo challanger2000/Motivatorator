@@ -1,14 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <vstgui-ui-description version="1">
-  <colors>
-    <color name="testBackground" rgba="#252525ff"/>
-    <color name="testText" rgba="#f0f0f0ff"/>
-  </colors>
-  <fonts>
-    <font name="testFont" font-name="Arial" size="22" bold="true"/>
-  </fonts>
+  <bitmaps>
+    <bitmap name="mainBackground" path="motivatorator_main_bg.png"/>
+  </bitmaps>
 
-  <template name="view" class="CViewContainer" size="760,430" background-color="testBackground">
-    <view class="CTextLabel" origin="180,190" size="400,50" title="MOTIVATORATOR GUI TEST" font="testFont" font-color="testText" transparent="true" text-alignment="center"/>
+  <template name="view" class="CViewContainer" size="760,430" bitmap="mainBackground">
   </template>
 </vstgui-ui-description>
