@@ -40,6 +40,8 @@ tresult PLUGIN_API MotivatoratorProcessor::setupProcessing(ProcessSetup& setup) 
     pingSamplesRemaining_ = 0;
     pingSamplesTotal_ = 0;
     pingPhase_ = 0.0;
+    voicePrototype_.setSampleRate(sampleRate_);
+    voicePrototype_.resetPlayback();
     return AudioEffect::setupProcessing(setup);
 }
 
@@ -52,8 +54,7 @@ tresult PLUGIN_API MotivatoratorProcessor::getState(IBStream* state) {
     IBStreamer stream(state, kLittleEndian);
     stream.writeInt32(kStateVersion); stream.writeInt32(mode_); stream.writeInt32(language_); stream.writeInt32(interval_);
     stream.writeInt32(character_); stream.writeInt32(muted_ ? 1 : 0);
-    // Keep the legacy mixed-state slot so version-1 project state remains byte-compatible.
-    stream.writeInt32(1);
+    stream.writeInt32(1); // legacy mixed-state slot
     stream.writeInt32(phrasePositive_ ? 1 : 0); stream.writeInt32(motivatorPos_); stream.writeInt32(demotivatorPos_);
     stream.writeInt32(motivatorStart_); stream.writeInt32(demotivatorStart_); stream.writeInt32(motivatorStep_); stream.writeInt32(demotivatorStep_);
     stream.writeInt32(currentPhraseGlobal_);
@@ -71,8 +72,7 @@ tresult PLUGIN_API MotivatoratorProcessor::setState(IBStream* state) {
     if (!stream.readInt32(value)) return kResultFalse; interval_=std::clamp(value,0,5);
     if (!stream.readInt32(value)) return kResultFalse; character_=std::clamp(value,0,2);
     if (!stream.readInt32(value)) return kResultFalse; muted_=value!=0;
-    // Read and discard the legacy mixed-state slot from version-1 project state.
-    if (!stream.readInt32(value)) return kResultFalse;
+    if (!stream.readInt32(value)) return kResultFalse; // legacy mixed-state slot
     if (!stream.readInt32(value)) return kResultFalse; phrasePositive_=value!=0;
     if (!stream.readInt32(value)) return kResultFalse; motivatorPos_=std::clamp(value,0,(int)kMotivatorCount);
     if (!stream.readInt32(value)) return kResultFalse; demotivatorPos_=std::clamp(value,0,(int)kDemotivatorCount);
@@ -124,6 +124,18 @@ void MotivatoratorProcessor::chooseNextPhrase(){
     const int local=nextDeckIndex(phrasePositive_); const int languageBase=language_==0?0:(int)kPhraseCount;
     const int toneBase=phrasePositive_?0:(int)kMotivatorCount; currentPhraseGlobal_=languageBase+toneBase+local;
     triggerPing();
+    requestVoicePrototype();
+}
+
+void MotivatoratorProcessor::requestVoicePrototype(){
+    const int bankIndex=currentPhraseGlobal_%static_cast<int>(kPhraseCount);
+    const bool positive=bankIndex<static_cast<int>(kMotivatorCount);
+    const int local=positive?bankIndex:bankIndex-static_cast<int>(kMotivatorCount);
+    const auto& phrase=positive?kMotivator[local]:kDemotivator[local];
+    const TChar* source=language_==0?phrase.de:phrase.en;
+    std::u16string text;
+    if(source){for(const TChar* p=source;*p;++p) text.push_back(static_cast<char16_t>(*p));}
+    voicePrototype_.request(text);
 }
 
 void MotivatoratorProcessor::emitPhrase(ProcessData& data){
@@ -140,7 +152,6 @@ void MotivatoratorProcessor::resetIntervalCounter(){
 
 void MotivatoratorProcessor::triggerPing(){
     if(!messageSound_ || pingVolume_<=0.0) return;
-    // Keep the direct ping short, but leave enough time for a tiny room tail.
     pingSamplesTotal_=std::max<int64>(1,(int64)(sampleRate_*0.20));
     pingSamplesRemaining_=pingSamplesTotal_;
     pingPhase_=0.0;
@@ -152,33 +163,34 @@ void MotivatoratorProcessor::mixPing(ProcessData& data){
     const int64 startRemaining=pingSamplesRemaining_;
     const int32 count=std::min<int64>(data.numSamples,startRemaining);
     const double phaseInc=2.0*kPi*1650.0/sampleRate_;
-    // Previous maximum was 0.22. 0.44 is +6.02 dB, giving the control useful headroom.
     const double baseGain=0.44*pingVolume_;
     for(int32 i=0;i<count;++i){
         const double elapsed=1.0-(double)pingSamplesRemaining_/(double)pingSamplesTotal_;
         const double elapsedSeconds=elapsed*0.20;
-
-        // Original dry notification ping: essentially finished after ~90 ms.
         const double dryProgress=std::min(1.0,elapsedSeconds/0.09);
         const double attack=std::min(1.0,dryProgress/0.025);
         const double dryDecay=std::exp(-5.5*dryProgress);
         const double dry=(elapsedSeconds<=0.09)?std::sin(pingPhase_)*baseGain*attack*dryDecay:0.0;
-
-        // Very small synthetic room tail. Three low-level, slightly detuned reflections
-        // avoid a distinct echo while adding a short shimmer behind the ping.
         const double roomFade=std::exp(-18.0*elapsedSeconds);
         const double roomAttack=std::min(1.0,elapsedSeconds/0.012);
         const double reflections=(std::sin(pingPhase_*0.997+0.7)+std::sin(pingPhase_*1.013+1.9)+std::sin(pingPhase_*0.983+3.1))/3.0;
         const double room=reflections*baseGain*0.12*roomAttack*roomFade;
         const double sample=dry+room;
+        if(data.symbolicSampleSize==kSample32){for(int32 c=0;c<out.numChannels;++c)if(out.channelBuffers32[c])out.channelBuffers32[c][i]+=static_cast<float>(sample);}
+        else if(data.symbolicSampleSize==kSample64){for(int32 c=0;c<out.numChannels;++c)if(out.channelBuffers64[c])out.channelBuffers64[c][i]+=sample;}
+        pingPhase_+=phaseInc;if(pingPhase_>=2.0*kPi)pingPhase_-=2.0*kPi;--pingSamplesRemaining_;
+    }
+}
 
-        if(data.symbolicSampleSize==kSample32){
-            for(int32 c=0;c<out.numChannels;++c) if(out.channelBuffers32[c]) out.channelBuffers32[c][i]+=static_cast<float>(sample);
-        } else if(data.symbolicSampleSize==kSample64){
-            for(int32 c=0;c<out.numChannels;++c) if(out.channelBuffers64[c]) out.channelBuffers64[c][i]+=sample;
-        }
-        pingPhase_+=phaseInc; if(pingPhase_>=2.0*kPi) pingPhase_-=2.0*kPi;
-        --pingSamplesRemaining_;
+void MotivatoratorProcessor::mixVoicePrototype(ProcessData& data){
+    if(data.numOutputs<=0||data.numSamples<=0)return;
+    auto& out=data.outputs[0];
+    constexpr double voiceGain=0.35;
+    for(int32 i=0;i<data.numSamples;++i){
+        const double sample=static_cast<double>(voicePrototype_.nextSample())*voiceGain;
+        if(sample==0.0)continue;
+        if(data.symbolicSampleSize==kSample32){for(int32 c=0;c<out.numChannels;++c)if(out.channelBuffers32[c])out.channelBuffers32[c][i]+=static_cast<float>(sample);}
+        else if(data.symbolicSampleSize==kSample64){for(int32 c=0;c<out.numChannels;++c)if(out.channelBuffers64[c])out.channelBuffers64[c][i]+=sample;}
     }
 }
 
@@ -190,6 +202,7 @@ tresult PLUGIN_API MotivatoratorProcessor::process(ProcessData& data){
     if(needsPhraseEmit_) emitPhrase(data);
     if(!muted_&&data.numSamples>0){samplesUntilNext_-=data.numSamples;if(samplesUntilNext_<=0){chooseNextPhrase();emitPhrase(data);resetIntervalCounter();}}
     mixPing(data);
+    mixVoicePrototype(data);
     return kResultOk;
 }
 
@@ -212,8 +225,8 @@ tresult PLUGIN_API MotivatoratorController::setComponentState(IBStream* state){
     if(!s.readInt32(version)||version!=kStateVersion)return kResultFalse;if(!s.readInt32(mode)||!s.readInt32(language)||!s.readInt32(interval)||!s.readInt32(character)||!s.readInt32(muted)||!s.readInt32(legacyMixed)||!s.readInt32(positive))return kResultFalse;
     for(int i=0;i<6;++i)if(!s.readInt32(skip))return kResultFalse;if(!s.readInt32(current))return kResultFalse;
     setParamNormalized(kModeId,(double)std::clamp(mode,0,2)/2.0);setParamNormalized(kLanguageId,(double)std::clamp(language,0,1));setParamNormalized(kIntervalId,(double)std::clamp(interval,0,5)/5.0);setParamNormalized(kCharacterId,(double)std::clamp(character,0,2)/2.0);setParamNormalized(kMuteId,muted?1.0:0.0);setParamNormalized(kPhraseToneId,positive?0.0:1.0);setParamNormalized(kPhraseId,(double)std::clamp(current,0,(int)(kPhraseCount*2)-1)/((kPhraseCount*2)-1));
-    int32 sound=1; if(s.readInt32(sound)) setParamNormalized(kMessageSoundId,sound?1.0:0.0);
-    double volume=0.5; if(s.readDouble(volume)) setParamNormalized(kPingVolumeId,std::clamp(volume,0.0,1.0));
+    int32 sound=1;if(s.readInt32(sound))setParamNormalized(kMessageSoundId,sound?1.0:0.0);
+    double volume=0.5;if(s.readDouble(volume))setParamNormalized(kPingVolumeId,std::clamp(volume,0.0,1.0));
     return kResultOk;
 }
 
