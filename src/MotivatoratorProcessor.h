@@ -49,6 +49,7 @@ private:
     bool mixedNextPositive_ {true};
     bool phrasePositive_ {true};
     bool needsPhraseEmit_ {true};
+    uint32_t mixedRandomState_ {0xA341316Cu};
     int motivatorPos_ {0};
     int demotivatorPos_ {0};
     int motivatorStart_ {0};
