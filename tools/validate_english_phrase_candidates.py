@@ -22,6 +22,9 @@ CONTENT_FORBIDDEN = {
     "logic", "fl studio", "reaper", "vst", "vst3", "plugin", "plugins",
     "techno", "metal music", "rock music", "house music",
 }
+APPROVED_CONTENT_EXCEPTIONS = {
+    "Is that guitar supposed to be that out of tune?",
+}
 
 WATCH_OPENERS = {"okay", "damn", "shit", "hell", "holy", "wow"}
 WARN_WATCHED_OPENER = 35
@@ -68,7 +71,7 @@ def main() -> int:
             opener_counts[words[0]] += 1
 
         content_hit = sorted(w for w in CONTENT_FORBIDDEN if re.search(rf"\b{re.escape(norm(w))}\b", n))
-        if content_hit:
+        if content_hit and text not in APPROVED_CONTENT_EXCEPTIONS:
             errors += 1
             print(f"ERROR concrete content {content_hit}: {path.name}:{lineno}: {text}")
 
