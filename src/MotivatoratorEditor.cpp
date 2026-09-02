@@ -54,10 +54,34 @@ public:
         const int mode=std::clamp(static_cast<int>(std::lround(controller_->getParamNormalized(kModeId)*2.0)),0,2);
         const char* text=mode==0?"MOTIVATOR":(mode==1?"DEMOTIVATOR":"MIXED");
         VSTGUI::CColor color=mode==0?VSTGUI::CColor(255,184,70,255):(mode==1?VSTGUI::CColor(238,72,45,255):VSTGUI::CColor(255,137,48,255));
-        auto rect=getViewSize();
+        const auto rect=getViewSize();
         context->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Arial",22.,VSTGUI::kBoldFace));
-        context->setFontColor(color);
         context->setDrawMode(VSTGUI::kAntiAliasing);
+
+        // Soft CRT-style halo around the title without changing its position.
+        VSTGUI::CColor glow=color;
+        glow.alpha=52;
+        context->setFontColor(glow);
+        for(double dx=-2.;dx<=2.;dx+=2.){
+            for(double dy=-2.;dy<=2.;dy+=2.){
+                if(dx==0.&&dy==0.) continue;
+                auto haloRect=rect;
+                haloRect.offset(dx,dy);
+                context->drawString(text,haloRect,VSTGUI::kCenterText,true);
+            }
+        }
+        glow.alpha=105;
+        context->setFontColor(glow);
+        for(double dx=-1.;dx<=1.;dx+=2.){
+            for(double dy=-1.;dy<=1.;dy+=2.){
+                auto haloRect=rect;
+                haloRect.offset(dx,dy);
+                context->drawString(text,haloRect,VSTGUI::kCenterText,true);
+            }
+        }
+
+        color.alpha=255;
+        context->setFontColor(color);
         context->drawString(text,rect,VSTGUI::kCenterText,true);
         setDirty(false);
     }
@@ -87,7 +111,7 @@ MotivatoratorEditor::MotivatoratorEditor(EditController* controller):VST3Editor(
 VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attributes,const VSTGUI::IUIDescription* description){
     if(const auto name=attributes.getAttributeValue(VSTGUI::IUIDescription::kCustomViewName)){
         if(*name=="CharacterView") return new CharacterView(VSTGUI::CRect(18.,82.,335.,352.),controller_);
-        if(*name=="ModeTitleView") return new ModeTitleView(VSTGUI::CRect(45.,18.,250.,58.),controller_);
+        if(*name=="ModeTitleView") return new ModeTitleView(VSTGUI::CRect(100.,10.,304.,48.),controller_);
         if(*name=="ModeMotivator") return new ParameterButtonView(VSTGUI::CRect(242.,368.,312.,409.),controller_,kModeId,0.0,VSTGUI::CColor(255,177,45,255));
         if(*name=="ModeDemotivator") return new ParameterButtonView(VSTGUI::CRect(315.,369.,399.,408.),controller_,kModeId,0.5,VSTGUI::CColor(230,56,36,255));
         if(*name=="ModeMixed") return new ParameterButtonView(VSTGUI::CRect(397.,367.,470.,410.),controller_,kModeId,1.0,VSTGUI::CColor(255,125,35,255));
