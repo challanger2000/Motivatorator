@@ -3,7 +3,7 @@
 
 // MOTIVATOR — 50 standalone comments
 u"That just hit properly hard.",
-u"Damn, that's disgustingly good.",
+u"That's offensively good.",
 u"That makes immediate sense.",
 u"I wouldn't change another thing.",
 u"That thing is rock solid now.",
