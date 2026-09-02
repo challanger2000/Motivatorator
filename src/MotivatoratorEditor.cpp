@@ -59,10 +59,10 @@ MotivatoratorEditor::MotivatoratorEditor(EditController* controller):VST3Editor(
 VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attributes,const VSTGUI::IUIDescription* description){
     if(const auto name=attributes.getAttributeValue(VSTGUI::IUIDescription::kCustomViewName)){
         if(*name=="CharacterView") return new CharacterView(VSTGUI::CRect(18.,82.,335.,352.),controller_);
-        // Exact visible button-face bounds from the accepted 760x428 background.
         if(*name=="ModeMotivator") return new ParameterButtonView(VSTGUI::CRect(242.,368.,312.,409.),controller_,kModeId,0.0,VSTGUI::CColor(255,177,45,255));
         if(*name=="ModeDemotivator") return new ParameterButtonView(VSTGUI::CRect(315.,369.,399.,408.),controller_,kModeId,0.5,VSTGUI::CColor(230,56,36,255));
-        if(*name=="ModeMixed") return new ParameterButtonView(VSTGUI::CRect(401.,368.,471.,409.),controller_,kModeId,1.0,VSTGUI::CColor(255,125,35,255));
+        // MIXED alone: align its glow with the same inner-face geometry used by the accepted buttons.
+        if(*name=="ModeMixed") return new ParameterButtonView(VSTGUI::CRect(403.,369.,468.,408.),controller_,kModeId,1.0,VSTGUI::CColor(255,125,35,255));
         if(*name=="CharacterGnomi") return new ParameterButtonView(VSTGUI::CRect(500.,369.,574.,408.),controller_,kCharacterId,0.0,VSTGUI::CColor(255,156,38,255));
         if(*name=="CharacterRocky") return new ParameterButtonView(VSTGUI::CRect(579.,369.,653.,408.),controller_,kCharacterId,0.5,VSTGUI::CColor(255,156,38,255));
         if(*name=="CharacterDom") return new ParameterButtonView(VSTGUI::CRect(658.,369.,735.,408.),controller_,kCharacterId,1.0,VSTGUI::CColor(255,156,38,255));
