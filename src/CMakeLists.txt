@@ -16,6 +16,6 @@ endif()
 smtg_target_add_plugin_resources(Motivatorator
     RESOURCES
     ../resource/Motivatorator.uidesc
-    ../resource/gnomi.png)
+    ../resource/motivatorator_main_bg.png)
 
 smtg_target_configure_version_file(Motivatorator)
