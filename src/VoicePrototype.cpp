@@ -27,7 +27,6 @@ struct VoicePrototype::Impl {
     int pendingCharacter {0};
     std::atomic<double> targetRate {44100.0};
 
-    // Published by worker, then consumed lock-free by the audio thread.
     std::shared_ptr<const std::vector<float>> published;
     std::shared_ptr<const std::vector<float>> playing;
     std::atomic<uint64_t> generation {0};
@@ -97,17 +96,11 @@ struct VoicePrototype::Impl {
         if (FAILED(CoCreateInstance(CLSID_SpVoice, nullptr, CLSCTX_INPROC_SERVER, IID_ISpVoice,
                                     reinterpret_cast<void**>(&voice)))) { cleanup(); return {}; }
 
-        // Prefer a voice matching the currently selected plugin language.
-        // German = 0x0407, English (US) = 0x0409. If no matching token is
-        // installed, SAPI simply keeps the user's default voice.
         const wchar_t* languageFilter = language == 0 ? L"Language=407" : L"Language=409";
         if (SUCCEEDED(SpFindBestToken(SPCAT_VOICES, languageFilter, nullptr, &voiceToken)) && voiceToken) {
             voice->SetVoice(voiceToken);
         }
 
-        // First character differentiation happens at synthesis time. More
-        // obvious timbral processing can be layered on later without changing
-        // the realtime-safe architecture.
         const long speakingRate = character == 0 ? 2L : (character == 1 ? -1L : -3L);
         voice->SetRate(speakingRate);
 
@@ -151,14 +144,19 @@ struct VoicePrototype::Impl {
         if (pcm.empty()) return {};
 
         constexpr double sourceRate = 44100.0;
-        const double target = (std::max)(8000.0, (std::min)(requestedRate, 192000.0));
-        const size_t outCount = (std::max)<size_t>(1, static_cast<size_t>(pcm.size() * target / sourceRate));
+        double target = requestedRate;
+        if (target < 8000.0) target = 8000.0;
+        if (target > 192000.0) target = 192000.0;
+        size_t outCount = static_cast<size_t>(static_cast<double>(pcm.size()) * target / sourceRate);
+        if (outCount < 1u) outCount = 1u;
         auto out = std::make_shared<std::vector<float>>(outCount);
         const double step = sourceRate / target;
         for (size_t i = 0; i < outCount; ++i) {
-            const double sourcePos = i * step;
-            const size_t a = (std::min)(static_cast<size_t>(sourcePos), pcm.size() - 1);
-            const size_t b = (std::min)(a + 1, pcm.size() - 1);
+            const double sourcePos = static_cast<double>(i) * step;
+            size_t a = static_cast<size_t>(sourcePos);
+            if (a >= pcm.size()) a = pcm.size() - 1;
+            size_t b = a + 1;
+            if (b >= pcm.size()) b = pcm.size() - 1;
             const double frac = sourcePos - static_cast<double>(a);
             const double sample = pcm[a] * (1.0 - frac) + pcm[b] * frac;
             (*out)[i] = static_cast<float>(sample / 32768.0);
