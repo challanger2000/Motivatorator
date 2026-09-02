@@ -76,12 +76,12 @@ struct VoicePrototype::Impl {
 
     static void applyCharacterDSP(std::vector<float>& audio, double sampleRate, int character) {
         if (audio.empty() || sampleRate < 8000.0) return;
-        const double pitchFactor = character == 0 ? 1.10 : (character == 1 ? 0.80 : 0.60);
+        // Keep GNOMI recognisably small/high, but pull him slightly away from the
+        // youthful sound. ROCKY and D.O.M. stay untouched.
+        const double pitchFactor = character == 0 ? 1.08 : (character == 1 ? 0.80 : 0.60);
         audio = resamplePitch(audio, pitchFactor);
         const size_t originalSize = audio.size(); const double tailSeconds = character == 2 ? 0.24 : (character == 1 ? 0.15 : 0.11); audio.resize(originalSize + static_cast<size_t>(sampleRate * tailSeconds), 0.0f);
-        // GNOMI gets a little more saturation and a faint high-frequency rasp. This
-        // keeps the small/high character but removes some of the youthful smoothness.
-        const float drive = character == 0 ? 1.72f : (character == 1 ? 1.34f : 1.62f);
+        const float drive = character == 0 ? 1.95f : (character == 1 ? 1.34f : 1.62f);
         const float wet = character == 0 ? 0.09f : (character == 1 ? 0.17f : 0.20f);
         const double roomMs = character == 0 ? 36.0 : (character == 1 ? 19.0 : 72.0);
         size_t roomDelay = static_cast<size_t>(sampleRate * roomMs / 1000.0); if (roomDelay < 1u) roomDelay = 1u;
@@ -89,7 +89,7 @@ struct VoicePrototype::Impl {
         std::vector<float> delay(roomDelay, 0.0f); size_t delayPos = 0;
         size_t metalDelay = static_cast<size_t>(sampleRate * 0.0029); if (metalDelay < 1u) metalDelay = 1u; std::vector<float> metal(character == 1 ? metalDelay : 1u, 0.0f); size_t metalPos = 0;
         float low = 0.0f, lowDark = 0.0f, gnomiPrev = 0.0f;
-        const double cutoff = character == 0 ? 2050.0 : (character == 1 ? 3600.0 : 1450.0);
+        const double cutoff = character == 0 ? 1950.0 : (character == 1 ? 3600.0 : 1450.0);
         const float alpha = static_cast<float>(1.0 - std::exp(-6.283185307179586 * cutoff / sampleRate));
         const float darkAlpha = static_cast<float>(1.0 - std::exp(-6.283185307179586 * 900.0 / sampleRate));
         double robotPhase = 0.0; const double robotStep = 6.283185307179586 * 67.0 / sampleRate;
@@ -99,9 +99,9 @@ struct VoicePrototype::Impl {
             if (character == 0) {
                 const float presence = x - low;
                 const float rasp = x - gnomiPrev; gnomiPrev = x;
-                // Small amount of differentiated signal adds dry/grainy edges without
-                // turning GNOMI into a second robot or destroying intelligibility.
-                x = 0.88f * x + 0.48f * presence + 0.10f * rasp;
+                // More body, less polished presence and a stronger dry rasp make the
+                // voice sound older/grainier without giving GNOMI ROCKY's robot effect.
+                x = 0.82f * x + 0.26f * low + 0.36f * presence + 0.16f * rasp;
                 x = std::tanh(x * drive) / std::tanh(drive);
             } else if (character == 1) {
                 const float mod = static_cast<float>(0.68 + 0.32 * std::sin(robotPhase)); robotPhase += robotStep; if (robotPhase > 6.283185307179586) robotPhase -= 6.283185307179586;
@@ -119,7 +119,9 @@ struct VoicePrototype::Impl {
         if (language == 0) voiceToken = findVoiceByDescription(languageFilter, L"Stefan");
         if (!voiceToken) { const wchar_t* maleFilter = language == 0 ? L"Language=407;Gender=Male" : L"Language=409;Gender=Male"; SpFindBestToken(SPCAT_VOICES, maleFilter, nullptr, &voiceToken); }
         if (!voiceToken) SpFindBestToken(SPCAT_VOICES, languageFilter, nullptr, &voiceToken); if (voiceToken) voice->SetVoice(voiceToken);
-        const long speakingRate = character == 0 ? 3L : (character == 1 ? 2L : 1L); voice->SetRate(speakingRate);
+        // English tends to sound noticeably more rushed with the same SAPI rate.
+        // Slow GNOMI one extra step in English while leaving the other characters alone.
+        const long speakingRate = character == 0 ? (language == 0 ? 2L : 1L) : (character == 1 ? 2L : 1L); voice->SetRate(speakingRate);
         if (FAILED(CreateStreamOnHGlobal(nullptr, TRUE, &memoryStream))) { cleanup(); return {}; }
         if (FAILED(CoCreateInstance(CLSID_SpStream, nullptr, CLSCTX_INPROC_SERVER, IID_ISpStream, reinterpret_cast<void**>(&speechStream)))) { cleanup(); return {}; }
         waveFormat = static_cast<WAVEFORMATEX*>(CoTaskMemAlloc(sizeof(WAVEFORMATEX))); if (!waveFormat) { cleanup(); return {}; }
