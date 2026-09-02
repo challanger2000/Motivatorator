@@ -4,10 +4,13 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstring>
+#include <memory>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 #ifdef _WIN32
+#define NOMINMAX
 #include <windows.h>
 #include <sapi.h>
 #include <sphelper.h>
@@ -77,9 +80,7 @@ struct VoicePrototype::Impl {
         ISpVoice* voice = nullptr;
         ISpStream* speechStream = nullptr;
         IStream* memoryStream = nullptr;
-        WAVEFORMATEX* waveFormat = nullptr;
         auto cleanup = [&] {
-            if (waveFormat) CoTaskMemFree(waveFormat);
             if (speechStream) speechStream->Release();
             if (memoryStream) memoryStream->Release();
             if (voice) voice->Release();
@@ -91,9 +92,17 @@ struct VoicePrototype::Impl {
         if (FAILED(CoCreateInstance(CLSID_SpStream, nullptr, CLSCTX_INPROC_SERVER, IID_ISpStream,
                                     reinterpret_cast<void**>(&speechStream)))) { cleanup(); return {}; }
 
-        constexpr SPSTREAMFORMAT format = SPSF_44kHz16BitMono;
-        if (FAILED(SpConvertStreamFormatEnum(format, &waveFormat))) { cleanup(); return {}; }
-        if (FAILED(speechStream->SetBaseStream(memoryStream, SPDFID_WaveFormatEx, waveFormat))) { cleanup(); return {}; }
+        // Fixed 44.1 kHz, 16-bit mono PCM. Defining the WAVEFORMATEX explicitly avoids
+        // depending on SDK-specific SpConvertStreamFormatEnum overloads.
+        WAVEFORMATEX waveFormat {};
+        waveFormat.wFormatTag = WAVE_FORMAT_PCM;
+        waveFormat.nChannels = 1;
+        waveFormat.nSamplesPerSec = 44100;
+        waveFormat.wBitsPerSample = 16;
+        waveFormat.nBlockAlign = static_cast<WORD>(waveFormat.nChannels * waveFormat.wBitsPerSample / 8);
+        waveFormat.nAvgBytesPerSec = waveFormat.nSamplesPerSec * waveFormat.nBlockAlign;
+        waveFormat.cbSize = 0;
+        if (FAILED(speechStream->SetBaseStream(memoryStream, SPDFID_WaveFormatEx, &waveFormat))) { cleanup(); return {}; }
         if (FAILED(voice->SetOutput(speechStream, TRUE))) { cleanup(); return {}; }
 
         std::wstring wide;
@@ -118,14 +127,14 @@ struct VoicePrototype::Impl {
         if (pcm.empty()) return {};
 
         constexpr double sourceRate = 44100.0;
-        const double target = std::clamp(requestedRate, 8000.0, 192000.0);
-        const size_t outCount = std::max<size_t>(1, static_cast<size_t>(pcm.size() * target / sourceRate));
+        const double target = (std::max)(8000.0, (std::min)(requestedRate, 192000.0));
+        const size_t outCount = (std::max)(size_t{1}, static_cast<size_t>(pcm.size() * target / sourceRate));
         auto out = std::make_shared<std::vector<float>>(outCount);
         const double step = sourceRate / target;
         for (size_t i = 0; i < outCount; ++i) {
             const double sourcePos = i * step;
-            const size_t a = std::min(static_cast<size_t>(sourcePos), pcm.size() - 1);
-            const size_t b = std::min(a + 1, pcm.size() - 1);
+            const size_t a = (std::min)(static_cast<size_t>(sourcePos), pcm.size() - 1);
+            const size_t b = (std::min)(a + 1, pcm.size() - 1);
             const double frac = sourcePos - static_cast<double>(a);
             const double sample = pcm[a] * (1.0 - frac) + pcm[b] * frac;
             (*out)[i] = static_cast<float>(sample / 32768.0);
