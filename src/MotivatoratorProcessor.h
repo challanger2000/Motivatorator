@@ -2,6 +2,7 @@
 
 #include "public.sdk/source/vst/vstaudioeffect.h"
 #include "public.sdk/source/vst/vsteditcontroller.h"
+#include "VoicePrototype.h"
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -44,6 +45,8 @@ private:
     void resetIntervalCounter();
     void triggerPing();
     void mixPing(ProcessData& data);
+    void mixVoicePrototype(ProcessData& data);
+    void requestVoicePrototype();
     int nextDeckIndex(bool motivator);
 
     static uint32_t startupSeed() {
@@ -75,6 +78,7 @@ private:
     int demotivatorStep_ {53};
     int currentPhraseGlobal_ {0};
     int64 samplesUntilNext_ {0};
+    VoicePrototype voicePrototype_;
 };
 
 class MotivatoratorController final : public EditControllerEx1 {
