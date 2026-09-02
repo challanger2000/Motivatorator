@@ -98,7 +98,16 @@ int MotivatoratorProcessor::nextDeckIndex(bool motivator) {
 }
 
 void MotivatoratorProcessor::chooseNextPhrase(){
-    if(mode_==kModeMotivator) phrasePositive_=true; else if(mode_==kModeDemotivator) phrasePositive_=false; else {phrasePositive_=mixedNextPositive_;mixedNextPositive_=!mixedNextPositive_;}
+    if(mode_==kModeMotivator) phrasePositive_=true;
+    else if(mode_==kModeDemotivator) phrasePositive_=false;
+    else {
+        // MIXED is intentionally unconstrained: every comment gets an independent
+        // 50/50 tone decision. Consecutive positive or negative runs are allowed.
+        mixedRandomState_ ^= mixedRandomState_ << 13;
+        mixedRandomState_ ^= mixedRandomState_ >> 17;
+        mixedRandomState_ ^= mixedRandomState_ << 5;
+        phrasePositive_=(mixedRandomState_ & 1u)!=0u;
+    }
     const int local=nextDeckIndex(phrasePositive_); const int languageBase=language_==0?0:(int)kPhraseCount;
     const int toneBase=phrasePositive_?0:(int)kMotivatorCount; currentPhraseGlobal_=languageBase+toneBase+local;
 }
