@@ -68,8 +68,8 @@ tresult PLUGIN_API MotivatoratorProcessor::setState(IBStream* state) {
     if (!stream.readInt32(value)) return kResultFalse; demotivatorPos_=std::clamp(value,0,(int)kDemotivatorCount);
     if (!stream.readInt32(value)) return kResultFalse; motivatorStart_=std::clamp(value,0,(int)kMotivatorCount-1);
     if (!stream.readInt32(value)) return kResultFalse; demotivatorStart_=std::clamp(value,0,(int)kDemotivatorCount-1);
-    if (!stream.readInt32(value)) return kResultFalse; motivatorStep_=(value==7)?7:5;
-    if (!stream.readInt32(value)) return kResultFalse; demotivatorStep_=(value==5)?5:7;
+    if (!stream.readInt32(value)) return kResultFalse; motivatorStep_=(value==53)?53:37;
+    if (!stream.readInt32(value)) return kResultFalse; demotivatorStep_=(value==37)?37:53;
     if (!stream.readInt32(value)) return kResultFalse; currentPhraseGlobal_=std::clamp(value,0,(int)(kPhraseCount*2)-1);
     nextState_=false; needsPhraseEmit_=true; resetIntervalCounter(); return kResultOk;
 }
@@ -94,7 +94,7 @@ void MotivatoratorProcessor::handleParameters(ProcessData& data) {
 int MotivatoratorProcessor::nextDeckIndex(bool motivator) {
     int& pos=motivator?motivatorPos_:demotivatorPos_; int& start=motivator?motivatorStart_:demotivatorStart_; int& step=motivator?motivatorStep_:demotivatorStep_;
     const int count=motivator?(int)kMotivatorCount:(int)kDemotivatorCount; const int index=(start+pos*step)%count;
-    if(++pos>=count){pos=0;start=(start+11)%count;step=(step==5)?7:5;} return index;
+    if(++pos>=count){pos=0;start=(start+11)%count;step=(step==37)?53:37;} return index;
 }
 
 void MotivatoratorProcessor::chooseNextPhrase(){
@@ -130,7 +130,7 @@ tresult PLUGIN_API MotivatoratorController::initialize(FUnknown* context){
     auto* lang=new StringListParameter(STR16("Language"),kLanguageId);lang->appendString(STR16("Deutsch"));lang->appendString(STR16("English"));parameters.addParameter(lang);
     auto* interval=new StringListParameter(STR16("Interval"),kIntervalId);interval->appendString(STR16("5 sec"));interval->appendString(STR16("10 sec"));interval->appendString(STR16("15 sec"));interval->appendString(STR16("20 sec"));interval->appendString(STR16("25 sec"));interval->appendString(STR16("30 sec"));parameters.addParameter(interval);interval->setNormalized(0.4);
     auto* character=new StringListParameter(STR16("Character"),kCharacterId);character->appendString(STR16("GNOMI"));character->appendString(STR16("ROCKY"));character->appendString(STR16("D.O.M."));parameters.addParameter(character);
-    auto* phrase=new StringListParameter(STR16("Phrase"),kPhraseId);for(const auto& p:kMotivator)phrase->appendString(p.de);for(const auto& p:kDemotivator)phrase->appendString(p.de);for(const auto& p:kMotivator)phrase->appendString(p.en);for(const auto& p:kDemotivator)phrase->appendString(p.en);parameters.addParameter(phrase);
+    parameters.addParameter(STR16("Phrase"),nullptr,(int32)(kPhraseCount*2-1),0.0,0,kPhraseId);
     auto* tone=new StringListParameter(STR16("Phrase Tone"),kPhraseToneId);tone->appendString(STR16("POSITIVE"));tone->appendString(STR16("NEGATIVE"));parameters.addParameter(tone);return kResultOk;
 }
 
