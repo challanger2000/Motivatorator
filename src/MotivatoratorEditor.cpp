@@ -9,6 +9,7 @@
 #include "vstgui/uidescription/uiattributes.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <string>
 #include <vector>
 
