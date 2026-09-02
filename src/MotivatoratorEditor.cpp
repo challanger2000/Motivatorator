@@ -37,16 +37,23 @@ public:
         const int phraseIndex=positive?local:local-static_cast<int>(MotivatoratorPhrases::kMotivatorCount);
         const auto& phrase=positive?MotivatoratorPhrases::kMotivator[phraseIndex]:MotivatoratorPhrases::kDemotivator[phraseIndex];
         const Steinberg::Vst::TChar* text=english?phrase.en:phrase.de;
-
-        const double fontSize=chooseFontSize(text);
-        context->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Courier New",fontSize,VSTGUI::kBoldFace));
-        context->setDrawMode(VSTGUI::kAntiAliasing);
         VSTGUI::CColor color=positive?VSTGUI::CColor(255,174,62,255):VSTGUI::CColor(238,76,48,255);
+        context->setDrawMode(VSTGUI::kAntiAliasing);
 
-        // Fixed safe area inside the visible CRT glass. Text is never allowed to use the bezel edges.
         auto safe=getViewSize();
         safe.left+=18.; safe.right-=18.; safe.top+=12.; safe.bottom-=12.;
-        auto lines=wrap(text,maxCharsFor(fontSize));
+
+        double fontSize=30.;
+        std::vector<std::u16string> lines;
+        for(;fontSize>=16.;fontSize-=2.){
+            context->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Courier New",fontSize,VSTGUI::kBoldFace));
+            lines=wrapToWidth(context,text,safe.getWidth());
+            const double totalH=fontSize*1.24*lines.size();
+            if(totalH<=safe.getHeight())break;
+        }
+        fontSize=std::max(16.,fontSize);
+        context->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Courier New",fontSize,VSTGUI::kBoldFace));
+        lines=wrapToWidth(context,text,safe.getWidth());
         const double lineH=fontSize*1.24;
         const double totalH=lineH*lines.size();
         double y=safe.top+(safe.getHeight()-totalH)*0.5;
@@ -54,17 +61,31 @@ public:
         for(const auto& line:lines){
             VSTGUI::CRect r(safe.left,y,safe.right,y+lineH);
             const VSTGUI::UTF8String utf8(toUtf8(line));
-            VSTGUI::CColor glow=color; glow.alpha=46; context->setFontColor(glow);
-            for(double dx=-2.;dx<=2.;dx+=2.) for(double dy=-2.;dy<=2.;dy+=2.) {if(dx==0.&&dy==0.)continue;auto h=r;h.offset(dx,dy);context->drawString(utf8,h,VSTGUI::kCenterText,true);}
-            context->setFontColor(color); context->drawString(utf8,r,VSTGUI::kCenterText,true); y+=lineH;
+            VSTGUI::CColor glow=color;glow.alpha=46;context->setFontColor(glow);
+            for(double dx=-2.;dx<=2.;dx+=2.)for(double dy=-2.;dy<=2.;dy+=2.){if(dx==0.&&dy==0.)continue;auto h=r;h.offset(dx,dy);context->drawString(utf8,h,VSTGUI::kCenterText,true);}
+            context->setFontColor(color);context->drawString(utf8,r,VSTGUI::kCenterText,true);y+=lineH;
         }
         setDirty(false);
     }
 private:
-    static double chooseFontSize(const Steinberg::Vst::TChar* text){size_t n=0;while(text[n])++n;if(n<=30)return 23.;if(n<=46)return 20.;if(n<=64)return 18.;return 16.;}
-    // Conservative limits for Courier New inside the 314px-wide CRT safe area.
-    static size_t maxCharsFor(double s){return s>=23.?21:(s>=20.?24:(s>=18.?27:31));}
-    static std::vector<std::u16string> wrap(const Steinberg::Vst::TChar* text,size_t maxChars){std::u16string src(reinterpret_cast<const char16_t*>(text));std::vector<std::u16string> out;size_t pos=0;while(pos<src.size()){while(pos<src.size()&&src[pos]==u' ')++pos;if(pos>=src.size())break;size_t end=std::min(pos+maxChars,src.size());if(end<src.size()){size_t space=src.rfind(u' ',end);if(space!=std::u16string::npos&&space>pos)end=space;}out.push_back(src.substr(pos,end-pos));pos=end;while(pos<src.size()&&src[pos]==u' ')++pos;}return out;}
+    static std::vector<std::u16string> wrapToWidth(VSTGUI::CDrawContext* context,const Steinberg::Vst::TChar* text,double maxWidth){
+        std::u16string src(reinterpret_cast<const char16_t*>(text));
+        std::vector<std::u16string> out;
+        std::u16string line;
+        size_t pos=0;
+        while(pos<src.size()){
+            while(pos<src.size()&&src[pos]==u' ')++pos;
+            if(pos>=src.size())break;
+            size_t end=src.find(u' ',pos);if(end==std::u16string::npos)end=src.size();
+            std::u16string word=src.substr(pos,end-pos);
+            std::u16string candidate=line.empty()?word:line+u" "+word;
+            if(!line.empty()&&context->getStringWidth(VSTGUI::UTF8String(toUtf8(candidate)))>maxWidth){out.push_back(line);line=word;}else line=candidate;
+            pos=end;
+        }
+        if(!line.empty())out.push_back(line);
+        if(out.empty())out.push_back(u"");
+        return out;
+    }
     static std::string toUtf8(const std::u16string& s){std::string out;for(char16_t c:s){if(c<0x80)out.push_back(static_cast<char>(c));else if(c<0x800){out.push_back(static_cast<char>(0xC0|(c>>6)));out.push_back(static_cast<char>(0x80|(c&0x3F)));}else{out.push_back(static_cast<char>(0xE0|(c>>12)));out.push_back(static_cast<char>(0x80|((c>>6)&0x3F)));out.push_back(static_cast<char>(0x80|(c&0x3F)));}}return out;}
     EditController* controller_{nullptr};VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
 };
