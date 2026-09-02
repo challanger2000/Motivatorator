@@ -31,9 +31,9 @@
   <template name="view" class="CViewContainer" size="760,430">
     <view class="CView" origin="0,0" size="760,430" bitmap="mainbg"/>
 
-    <!-- Dynamic phrase: the parent clips the moving text to the CRT glass. -->
-    <view class="CViewContainer" origin="338,116" size="292,176" transparent="true">
-      <view class="CParamDisplay" origin="292,0" size="560,176" control-tag="phrase" custom-view-name="PhraseTicker" font="screen" font-color="screenGlow" transparent="true" text-alignment="left"/>
+    <!-- Dynamic phrase: clipped strictly to the CRT glass. -->
+    <view class="CViewContainer" origin="338,116" size="292,176" background-color="transparent" transparent="true">
+      <view class="CParamDisplay" origin="292,0" size="560,176" control-tag="phrase" custom-view-name="PhraseTicker" font="screen" font-color="screenGlow" back-color="transparent" frame-color="transparent" frame-width="0" style-no-frame="true" transparent="true" text-alignment="left"/>
     </view>
 
     <!-- Invisible click target exactly over the rendered OPTIONS plate. -->
