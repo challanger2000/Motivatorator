@@ -13,162 +13,21 @@
 #include <string>
 #include <vector>
 
-namespace Steinberg::Vst {
-namespace {
+namespace Steinberg::Vst { namespace {
+static void setParameter(EditController* c,ParamID id,double v){if(!c)return;c->beginEdit(id);c->setParamNormalized(id,v);c->performEdit(id,v);c->endEdit(id);}
 
-static void setParameter(EditController* controller, ParamID paramId, double value) {
-    if (!controller) return;
-    controller->beginEdit(paramId);
-    controller->setParamNormalized(paramId, value);
-    controller->performEdit(paramId, value);
-    controller->endEdit(paramId);
-}
+class CharacterView final:public VSTGUI::CView{public:CharacterView(const VSTGUI::CRect&s,EditController*c):CView(s),c_(c){gp_=load("gnomi_positive.png");gn_=load("gnomi_negative.png");rp_=load("rocky_positive.png");rn_=load("rocky_negative.png");dp_=load("dom_positive.png");dn_=load("dom_negative.png");setMouseEnabled(false);timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){invalid();},100);}void draw(VSTGUI::CDrawContext*x)override{if(!c_){setDirty(false);return;}int m=std::clamp((int)std::lround(c_->getParamNormalized(kModeId)*2.),0,2),ch=std::clamp((int)std::lround(c_->getParamNormalized(kCharacterId)*2.),0,2);bool neg=m==1||(m==2&&c_->getParamNormalized(kPhraseToneId)>=.5);VSTGUI::SharedPointer<VSTGUI::CBitmap>b;if(ch==0)b=neg?gn_:gp_;else if(ch==1)b=neg?rn_:rp_;else b=neg?dn_:dp_;if(b)b->draw(x,getViewSize(),VSTGUI::CPoint(0.,0.),1.f);setDirty(false);}private:static VSTGUI::SharedPointer<VSTGUI::CBitmap>load(const char*n){auto b=VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription(n));if(b&&b->getPlatformBitmap())b->getPlatformBitmap()->setScaleFactor(2.);return b;}EditController*c_;VSTGUI::SharedPointer<VSTGUI::CBitmap>gp_,gn_,rp_,rn_,dp_,dn_;VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer>timer_;};
 
-class CharacterView final : public VSTGUI::CView {
-public:
-    CharacterView(const VSTGUI::CRect& size, EditController* controller) : CView(size), controller_(controller) {
-        gnomiPositive_=load("gnomi_positive.png"); gnomiNegative_=load("gnomi_negative.png");
-        rockyPositive_=load("rocky_positive.png"); rockyNegative_=load("rocky_negative.png");
-        domPositive_=load("dom_positive.png"); domNegative_=load("dom_negative.png");
-        setMouseEnabled(false);
-        timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){invalid();},100);
-    }
-    void draw(VSTGUI::CDrawContext* context) override {
-        if(!controller_){setDirty(false);return;}
-        const int mode=std::clamp(static_cast<int>(std::lround(controller_->getParamNormalized(kModeId)*2.0)),0,2);
-        const int character=std::clamp(static_cast<int>(std::lround(controller_->getParamNormalized(kCharacterId)*2.0)),0,2);
-        const bool negative=mode==1||(mode==2&&controller_->getParamNormalized(kPhraseToneId)>=0.5);
-        VSTGUI::SharedPointer<VSTGUI::CBitmap> bitmap;
-        if(character==0) bitmap=negative?gnomiNegative_:gnomiPositive_;
-        else if(character==1) bitmap=negative?rockyNegative_:rockyPositive_;
-        else bitmap=negative?domNegative_:domPositive_;
-        if(bitmap) bitmap->draw(context,getViewSize(),VSTGUI::CPoint(0.,0.),1.f);
-        setDirty(false);
-    }
-private:
-    static VSTGUI::SharedPointer<VSTGUI::CBitmap> load(const char* name){
-        auto bitmap=VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription(name));
-        if(bitmap&&bitmap->getPlatformBitmap()) bitmap->getPlatformBitmap()->setScaleFactor(2.0);
-        return bitmap;
-    }
-    EditController* controller_{nullptr};
-    VSTGUI::SharedPointer<VSTGUI::CBitmap> gnomiPositive_,gnomiNegative_,rockyPositive_,rockyNegative_,domPositive_,domNegative_;
-    VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
-};
+class ModeTitleView final:public VSTGUI::CView{public:ModeTitleView(const VSTGUI::CRect&s,EditController*c):CView(s),c_(c){setMouseEnabled(false);timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){invalid();},100);}void draw(VSTGUI::CDrawContext*x)override{if(!c_){setDirty(false);return;}int m=std::clamp((int)std::lround(c_->getParamNormalized(kModeId)*2.),0,2);const char*t=m==0?"MOTIVATOR":m==1?"DEMOTIVATOR":"MIXED";VSTGUI::CColor col=m==0?VSTGUI::CColor(255,184,70,255):m==1?VSTGUI::CColor(238,72,45,255):VSTGUI::CColor(255,137,48,255);auto r=getViewSize();x->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Arial",22.,VSTGUI::kBoldFace));x->setDrawMode(VSTGUI::kAntiAliasing);VSTGUI::CColor g=col;g.alpha=52;x->setFontColor(g);for(double dx=-2;dx<=2;dx+=2)for(double dy=-2;dy<=2;dy+=2){if(dx==0&&dy==0)continue;auto h=r;h.offset(dx,dy);x->drawString(t,h,VSTGUI::kCenterText,true);}g.alpha=105;x->setFontColor(g);for(double dx=-1;dx<=1;dx+=2)for(double dy=-1;dy<=1;dy+=2){auto h=r;h.offset(dx,dy);x->drawString(t,h,VSTGUI::kCenterText,true);}x->setFontColor(col);x->drawString(t,r,VSTGUI::kCenterText,true);setDirty(false);}private:EditController*c_;VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer>timer_;};
 
-class ModeTitleView final : public VSTGUI::CView {
-public:
-    ModeTitleView(const VSTGUI::CRect& size,EditController* controller):CView(size),controller_(controller){
-        setMouseEnabled(false);
-        timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){invalid();},100);
-    }
-    void draw(VSTGUI::CDrawContext* context) override {
-        if(!controller_){setDirty(false);return;}
-        const int mode=std::clamp(static_cast<int>(std::lround(controller_->getParamNormalized(kModeId)*2.0)),0,2);
-        const char* text=mode==0?"MOTIVATOR":(mode==1?"DEMOTIVATOR":"MIXED");
-        VSTGUI::CColor color=mode==0?VSTGUI::CColor(255,184,70,255):(mode==1?VSTGUI::CColor(238,72,45,255):VSTGUI::CColor(255,137,48,255));
-        const auto rect=getViewSize();
-        context->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Arial",22.,VSTGUI::kBoldFace));
-        context->setDrawMode(VSTGUI::kAntiAliasing);
-        VSTGUI::CColor glow=color; glow.alpha=52; context->setFontColor(glow);
-        for(double dx=-2.;dx<=2.;dx+=2.) for(double dy=-2.;dy<=2.;dy+=2.) { if(dx==0.&&dy==0.) continue; auto r=rect; r.offset(dx,dy); context->drawString(text,r,VSTGUI::kCenterText,true); }
-        glow.alpha=105; context->setFontColor(glow);
-        for(double dx=-1.;dx<=1.;dx+=2.) for(double dy=-1.;dy<=1.;dy+=2.) { auto r=rect; r.offset(dx,dy); context->drawString(text,r,VSTGUI::kCenterText,true); }
-        context->setFontColor(color); context->drawString(text,rect,VSTGUI::kCenterText,true); setDirty(false);
-    }
-private:
-    EditController* controller_{nullptr};
-    VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
-};
+class PhraseView final:public VSTGUI::CView{public:PhraseView(const VSTGUI::CRect&s,EditController*c):CView(s),c_(c){setMouseEnabled(false);timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){if(fade_<4)++fade_;invalid();},100);}void draw(VSTGUI::CDrawContext*x)override{if(!c_){setDirty(false);return;}int total=(int)(MotivatoratorPhrases::kPhraseCount*2),global=std::clamp((int)std::lround(c_->getParamNormalized(kPhraseId)*(total-1)),0,total-1);if(global!=last_){last_=global;fade_=0;}double f=std::clamp(fade_/3.5,0.,1.);int per=(int)MotivatoratorPhrases::kPhraseCount;bool en=global>=per;int local=global%per;bool pos=local<(int)MotivatoratorPhrases::kMotivatorCount;int pi=pos?local:local-(int)MotivatoratorPhrases::kMotivatorCount;const auto&p=pos?MotivatoratorPhrases::kMotivator[pi]:MotivatoratorPhrases::kDemotivator[pi];const TChar*t=en?p.en:p.de;VSTGUI::CColor col=pos?VSTGUI::CColor(255,174,62,255):VSTGUI::CColor(238,76,48,255);col.alpha=(uint8_t)(255.*f);x->setDrawMode(VSTGUI::kAntiAliasing);auto safe=getViewSize();safe.left+=18;safe.right-=18;safe.top+=12;safe.bottom-=12;double fs=30.;std::vector<std::u16string>lines;for(;fs>=16.;fs-=2.){x->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Courier New",fs,VSTGUI::kBoldFace));lines=wrap(x,t,safe.getWidth());if(fs*1.24*lines.size()<=safe.getHeight())break;}fs=std::max(16.,fs);x->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Courier New",fs,VSTGUI::kBoldFace));lines=wrap(x,t,safe.getWidth());double lh=fs*1.24,y=safe.top+(safe.getHeight()-lh*lines.size())*.5;for(auto&line:lines){VSTGUI::CRect r(safe.left,y,safe.right,y+lh);VSTGUI::UTF8String u(toUtf8(line));VSTGUI::CColor g=col;g.alpha=(uint8_t)(46.*f);x->setFontColor(g);for(double dx=-2;dx<=2;dx+=2)for(double dy=-2;dy<=2;dy+=2){if(dx==0&&dy==0)continue;auto h=r;h.offset(dx,dy);x->drawString(u,h,VSTGUI::kCenterText,true);}x->setFontColor(col);x->drawString(u,r,VSTGUI::kCenterText,true);y+=lh;}setDirty(false);}private:static std::vector<std::u16string>wrap(VSTGUI::CDrawContext*x,const TChar*t,double w){std::u16string s(reinterpret_cast<const char16_t*>(t));std::vector<std::u16string>o;std::u16string line;size_t p=0;while(p<s.size()){while(p<s.size()&&s[p]==u' ')++p;if(p>=s.size())break;size_t e=s.find(u' ',p);if(e==std::u16string::npos)e=s.size();auto word=s.substr(p,e-p),cand=line.empty()?word:line+u" "+word;if(!line.empty()&&x->getStringWidth(VSTGUI::UTF8String(toUtf8(cand)))>w){o.push_back(line);line=word;}else line=cand;p=e;}if(!line.empty())o.push_back(line);if(o.empty())o.push_back(u"");return o;}static std::string toUtf8(const std::u16string&s){std::string o;for(char16_t c:s){if(c<0x80)o.push_back((char)c);else if(c<0x800){o.push_back((char)(0xC0|(c>>6)));o.push_back((char)(0x80|(c&0x3F)));}else{o.push_back((char)(0xE0|(c>>12)));o.push_back((char)(0x80|((c>>6)&0x3F)));o.push_back((char)(0x80|(c&0x3F)));}}return o;}EditController*c_;int last_{-1},fade_{4};VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer>timer_;};
 
-class PhraseView final : public VSTGUI::CView {
-public:
-    PhraseView(const VSTGUI::CRect& size,EditController* controller):CView(size),controller_(controller){
-        setMouseEnabled(false);
-        timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){if(fadeTicks_<4)++fadeTicks_;invalid();},100);
-    }
-    void draw(VSTGUI::CDrawContext* context) override {
-        if(!controller_){setDirty(false);return;}
-        const int total=static_cast<int>(MotivatoratorPhrases::kPhraseCount*2);
-        const int global=std::clamp(static_cast<int>(std::lround(controller_->getParamNormalized(kPhraseId)*(total-1))),0,total-1);
-        if(global!=lastPhrase_){lastPhrase_=global;fadeTicks_=0;}
-        const double fade=std::clamp(fadeTicks_/3.5,0.0,1.0);
-        const int perLanguage=static_cast<int>(MotivatoratorPhrases::kPhraseCount);
-        const bool english=global>=perLanguage; const int local=global%perLanguage;
-        const bool positive=local<static_cast<int>(MotivatoratorPhrases::kMotivatorCount);
-        const int phraseIndex=positive?local:local-static_cast<int>(MotivatoratorPhrases::kMotivatorCount);
-        const auto& phrase=positive?MotivatoratorPhrases::kMotivator[phraseIndex]:MotivatoratorPhrases::kDemotivator[phraseIndex];
-        const Steinberg::Vst::TChar* text=english?phrase.en:phrase.de;
-        VSTGUI::CColor color=positive?VSTGUI::CColor(255,174,62,255):VSTGUI::CColor(238,76,48,255); color.alpha=static_cast<uint8_t>(255.0*fade);
-        context->setDrawMode(VSTGUI::kAntiAliasing); auto safe=getViewSize(); safe.left+=18.; safe.right-=18.; safe.top+=12.; safe.bottom-=12.;
-        double fontSize=30.; std::vector<std::u16string> lines;
-        for(;fontSize>=16.;fontSize-=2.) { context->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Courier New",fontSize,VSTGUI::kBoldFace)); lines=wrapToWidth(context,text,safe.getWidth()); if(fontSize*1.24*lines.size()<=safe.getHeight()) break; }
-        fontSize=std::max(16.,fontSize); context->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Courier New",fontSize,VSTGUI::kBoldFace)); lines=wrapToWidth(context,text,safe.getWidth());
-        const double lineH=fontSize*1.24; const double totalH=lineH*lines.size(); double y=safe.top+(safe.getHeight()-totalH)*0.5;
-        for(const auto& line:lines) { VSTGUI::CRect r(safe.left,y,safe.right,y+lineH); const VSTGUI::UTF8String utf8(toUtf8(line)); VSTGUI::CColor glow=color; glow.alpha=static_cast<uint8_t>(46.0*fade); context->setFontColor(glow);
-            for(double dx=-2.;dx<=2.;dx+=2.) for(double dy=-2.;dy<=2.;dy+=2.) { if(dx==0.&&dy==0.) continue; auto h=r; h.offset(dx,dy); context->drawString(utf8,h,VSTGUI::kCenterText,true); }
-            context->setFontColor(color); context->drawString(utf8,r,VSTGUI::kCenterText,true); y+=lineH; }
-        setDirty(false);
-    }
-private:
-    static std::vector<std::u16string> wrapToWidth(VSTGUI::CDrawContext* context,const Steinberg::Vst::TChar* text,double maxWidth){
-        std::u16string src(reinterpret_cast<const char16_t*>(text)); std::vector<std::u16string> out; std::u16string line; size_t pos=0;
-        while(pos<src.size()){ while(pos<src.size()&&src[pos]==u' ')++pos; if(pos>=src.size())break; size_t end=src.find(u' ',pos); if(end==std::u16string::npos)end=src.size(); std::u16string word=src.substr(pos,end-pos); std::u16string candidate=line.empty()?word:line+u" "+word; if(!line.empty()&&context->getStringWidth(VSTGUI::UTF8String(toUtf8(candidate)))>maxWidth){out.push_back(line);line=word;} else line=candidate; pos=end; }
-        if(!line.empty())out.push_back(line); if(out.empty())out.push_back(u""); return out;
-    }
-    static std::string toUtf8(const std::u16string& s){ std::string out; for(char16_t c:s){ if(c<0x80)out.push_back(static_cast<char>(c)); else if(c<0x800){out.push_back(static_cast<char>(0xC0|(c>>6)));out.push_back(static_cast<char>(0x80|(c&0x3F)));} else{out.push_back(static_cast<char>(0xE0|(c>>12)));out.push_back(static_cast<char>(0x80|((c>>6)&0x3F)));out.push_back(static_cast<char>(0x80|(c&0x3F)));} } return out; }
-    EditController* controller_{nullptr}; int lastPhrase_{-1}; int fadeTicks_{4}; VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
-};
+static void drawButtonGlow(VSTGUI::CDrawContext*x,VSTGUI::CRect r,const VSTGUI::CColor&c){r.inset(2,2);auto f=c;f.alpha=58;x->setFillColor(f);x->drawRect(r,VSTGUI::kDrawFilled);auto e=c;e.alpha=245;x->setFrameColor(e);x->setLineWidth(1.);x->drawRect(r,VSTGUI::kDrawStroked);auto h=r;h.inset(1,1);e.alpha=150;x->setFrameColor(e);x->drawRect(h,VSTGUI::kDrawStroked);h=r;h.inset(3,3);e.alpha=88;x->setFrameColor(e);x->drawRect(h,VSTGUI::kDrawStroked);h=r;h.inset(5,5);e.alpha=42;x->setFrameColor(e);x->drawRect(h,VSTGUI::kDrawStroked);}
+class ParameterButtonView final:public VSTGUI::CView{public:ParameterButtonView(const VSTGUI::CRect&s,EditController*c,ParamID id,double v,const VSTGUI::CColor&g):CView(s),c_(c),id_(id),v_(v),g_(g){setMouseEnabled(true);timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){invalid();},100);}void draw(VSTGUI::CDrawContext*x)override{if(c_&&std::abs(c_->getParamNormalized(id_)-v_)<.20)drawButtonGlow(x,getViewSize(),g_);setDirty(false);}VSTGUI::CMouseEventResult onMouseDown(VSTGUI::CPoint&,const VSTGUI::CButtonState&)override{if(!c_)return VSTGUI::kMouseEventNotHandled;setParameter(c_,id_,v_);invalid();return VSTGUI::kMouseEventHandled;}private:EditController*c_;ParamID id_;double v_;VSTGUI::CColor g_;VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer>timer_;};
+class OptionsButtonView final:public VSTGUI::CView{public:OptionsButtonView(const VSTGUI::CRect&s,EditController*c):CView(s),c_(c){setMouseEnabled(true);timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){invalid();},100);}void draw(VSTGUI::CDrawContext*x)override{if(c_&&c_->getParamNormalized(kOptionsId)>=.5)drawButtonGlow(x,getViewSize(),VSTGUI::CColor(255,156,38,255));setDirty(false);}VSTGUI::CMouseEventResult onMouseDown(VSTGUI::CPoint&,const VSTGUI::CButtonState&)override{if(!c_)return VSTGUI::kMouseEventNotHandled;setParameter(c_,kOptionsId,c_->getParamNormalized(kOptionsId)>=.5?0.:1.);invalid();return VSTGUI::kMouseEventHandled;}private:EditController*c_;VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer>timer_;};
 
-static void drawButtonGlow(VSTGUI::CDrawContext* context,VSTGUI::CRect rect,const VSTGUI::CColor& color){ rect.inset(2.,2.); VSTGUI::CColor fill=color; fill.alpha=58; context->setFillColor(fill); context->drawRect(rect,VSTGUI::kDrawFilled); VSTGUI::CColor edge=color; edge.alpha=245; context->setFrameColor(edge); context->setLineWidth(1.0); context->drawRect(rect,VSTGUI::kDrawStroked); auto h1=rect; h1.inset(1.,1.); VSTGUI::CColor c1=color; c1.alpha=150; context->setFrameColor(c1); context->drawRect(h1,VSTGUI::kDrawStroked); auto h2=rect; h2.inset(3.,3.); VSTGUI::CColor c2=color; c2.alpha=88; context->setFrameColor(c2); context->drawRect(h2,VSTGUI::kDrawStroked); auto h3=rect; h3.inset(5.,5.); VSTGUI::CColor c3=color; c3.alpha=42; context->setFrameColor(c3); context->drawRect(h3,VSTGUI::kDrawStroked); }
-
-class ParameterButtonView final:public VSTGUI::CView {
-public:
-    ParameterButtonView(const VSTGUI::CRect& size,EditController* controller,ParamID paramId,double value,const VSTGUI::CColor& glowColor):CView(size),controller_(controller),paramId_(paramId),value_(value),glowColor_(glowColor){setMouseEnabled(true);timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){invalid();},100);}
-    void draw(VSTGUI::CDrawContext* context)override{if(controller_&&std::abs(controller_->getParamNormalized(paramId_)-value_)<0.20)drawButtonGlow(context,getViewSize(),glowColor_);setDirty(false);}
-    VSTGUI::CMouseEventResult onMouseDown(VSTGUI::CPoint&,const VSTGUI::CButtonState&)override{if(!controller_)return VSTGUI::kMouseEventNotHandled;setParameter(controller_,paramId_,value_);invalid();return VSTGUI::kMouseEventHandled;}
-private: EditController* controller_{nullptr}; ParamID paramId_{0}; double value_{0.0}; VSTGUI::CColor glowColor_; VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
-};
-
-class OptionsButtonView final : public VSTGUI::CView {
-public:
-    OptionsButtonView(const VSTGUI::CRect& size,EditController* controller):CView(size),controller_(controller){setMouseEnabled(true);timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){invalid();},100);}
-    void draw(VSTGUI::CDrawContext* context)override{if(controller_&&controller_->getParamNormalized(kOptionsId)>=0.5)drawButtonGlow(context,getViewSize(),VSTGUI::CColor(255,156,38,255));setDirty(false);}
-    VSTGUI::CMouseEventResult onMouseDown(VSTGUI::CPoint&,const VSTGUI::CButtonState&)override{if(!controller_)return VSTGUI::kMouseEventNotHandled;const double next=controller_->getParamNormalized(kOptionsId)>=0.5?0.0:1.0;setParameter(controller_,kOptionsId,next);invalid();return VSTGUI::kMouseEventHandled;}
-private: EditController* controller_{nullptr}; VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
-};
-
-class OptionsPanelView final : public VSTGUI::CView {
-public:
-    OptionsPanelView(const VSTGUI::CRect& size,EditController* controller):CView(size),controller_(controller){setMouseEnabled(true);timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){invalid();},100);}
-    void draw(VSTGUI::CDrawContext* context)override{
-        if(!isOpen()){setDirty(false);return;} context->setDrawMode(VSTGUI::kAntiAliasing); auto panel=getViewSize(); panel.inset(18.,12.);
-        VSTGUI::CColor bg(8,8,7,242);context->setFillColor(bg);context->drawRect(panel,VSTGUI::kDrawFilled);VSTGUI::CColor frame(178,108,38,225);context->setFrameColor(frame);context->setLineWidth(1.0);context->drawRect(panel,VSTGUI::kDrawStroked);auto inner=panel;inner.inset(3.,3.);frame.alpha=75;context->setFrameColor(frame);context->drawRect(inner,VSTGUI::kDrawStroked);
-        const VSTGUI::CColor text(255,186,78,255);context->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Arial",18.,VSTGUI::kBoldFace));context->setFontColor(text);VSTGUI::CRect title(panel.left,panel.top+5.,panel.right,panel.top+27.);context->drawString("OPTIONS",title,VSTGUI::kCenterText,true);
-        context->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Arial",12.,VSTGUI::kBoldFace));
-        context->drawString("LANGUAGE",labelRect(0),VSTGUI::kLeftText,true);drawChoice(context,languageRect(0),"DEUTSCH",languageIndex()==0);drawChoice(context,languageRect(1),"ENGLISH",languageIndex()==1);
-        context->drawString("INTERVAL",labelRect(1),VSTGUI::kLeftText,true);static const char* labels[6]={"5s","10s","15s","20s","25s","30s"};const int selected=intervalIndex();for(int i=0;i<6;++i)drawChoice(context,intervalRect(i),labels[i],selected==i);
-        context->drawString("MESSAGE SOUND",labelRect(2),VSTGUI::kLeftText,true);drawChoice(context,soundRect(0),"OFF",!soundOn());drawChoice(context,soundRect(1),"ON",soundOn());
-        context->drawString("PING VOLUME",labelRect(3),VSTGUI::kLeftText,true);drawVolume(context);
-        setDirty(false);
-    }
-    VSTGUI::CMouseEventResult onMouseDown(VSTGUI::CPoint& where,const VSTGUI::CButtonState&)override{
-        if(!isOpen()||!controller_)return VSTGUI::kMouseEventNotHandled;for(int i=0;i<2;++i)if(languageRect(i).pointInside(where)){setParameter(controller_,kLanguageId,(double)i);invalid();return VSTGUI::kMouseEventHandled;}for(int i=0;i<6;++i)if(intervalRect(i).pointInside(where)){setParameter(controller_,kIntervalId,(double)i/5.0);invalid();return VSTGUI::kMouseEventHandled;}if(soundRect(0).pointInside(where)){setParameter(controller_,kMessageSoundId,0.0);invalid();return VSTGUI::kMouseEventHandled;}if(soundRect(1).pointInside(where)){setParameter(controller_,kMessageSoundId,1.0);invalid();return VSTGUI::kMouseEventHandled;}if(volumeRect().pointInside(where)){setVolumeFromPoint(where);return VSTGUI::kMouseEventHandled;}return VSTGUI::kMouseEventHandled;
-    }
-    VSTGUI::CMouseEventResult onMouseMoved(VSTGUI::CPoint& where,const VSTGUI::CButtonState& buttons)override{if(isOpen()&&buttons.isLeftButton()){auto r=volumeRect();auto drag=r;drag.left-=2.;drag.right+=4.;drag.top-=4.;drag.bottom+=4.;if(drag.pointInside(where)){setVolumeFromPoint(where);return VSTGUI::kMouseEventHandled;}}return VSTGUI::kMouseEventNotHandled;}
-private:
-    bool isOpen()const{return controller_&&controller_->getParamNormalized(kOptionsId)>=0.5;}int languageIndex()const{return std::clamp((int)std::lround(controller_->getParamNormalized(kLanguageId)),0,1);}int intervalIndex()const{return std::clamp((int)std::lround(controller_->getParamNormalized(kIntervalId)*5.0),0,5);}bool soundOn()const{return controller_->getParamNormalized(kMessageSoundId)>=0.5;}
-    VSTGUI::CRect rowRect(int row)const{auto p=getViewSize();p.inset(18.,12.);const double top=p.top+34.+row*43.;return VSTGUI::CRect(p.left+14.,top,p.right-14.,top+26.);}VSTGUI::CRect labelRect(int row)const{auto r=rowRect(row);r.right=r.left+112.;return r;}
-    VSTGUI::CRect languageRect(int i)const{auto r=rowRect(0);const double w=82.,gap=8.,left=r.left+116.+i*(w+gap);return VSTGUI::CRect(left,r.top,left+w,r.bottom);}VSTGUI::CRect intervalRect(int i)const{auto r=rowRect(1);const double left=r.left+82.,gap=3.,total=r.getWidth()-82.,w=(total-gap*5.)/6.,x=left+i*(w+gap);return VSTGUI::CRect(x,r.top,x+w,r.bottom);}VSTGUI::CRect soundRect(int i)const{auto r=rowRect(2);const double w=64.,gap=7.,left=r.left+126.+i*(w+gap);return VSTGUI::CRect(left,r.top,left+w,r.bottom);}VSTGUI::CRect volumeRect()const{auto r=rowRect(3);r.left+=112.;return r;}
-    void setVolumeFromPoint(const VSTGUI::CPoint& where){auto r=volumeRect();double v=(where.x-r.left)/r.getWidth();if(where.x>=r.right-2.)v=1.0;else if(where.x<=r.left+2.)v=0.0;v=std::clamp(v,0.0,1.0);setParameter(controller_,kPingVolumeId,v);invalid();}
-    void drawChoice(VSTGUI::CDrawContext* c,VSTGUI::CRect r,const char* label,bool selected)const{VSTGUI::CColor fill=selected?VSTGUI::CColor(122,63,18,185):VSTGUI::CColor(24,22,18,220);c->setFillColor(fill);c->drawRect(r,VSTGUI::kDrawFilled);VSTGUI::CColor edge=selected?VSTGUI::CColor(255,151,44,245):VSTGUI::CColor(116,83,50,190);c->setFrameColor(edge);c->setLineWidth(1.);c->drawRect(r,VSTGUI::kDrawStroked);c->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Arial",11.,VSTGUI::kBoldFace));c->setFontColor(selected?VSTGUI::CColor(255,194,93,255):VSTGUI::CColor(199,167,126,255));c->drawString(label,r,VSTGUI::kCenterText,true);}
-    void drawVolume(VSTGUI::CDrawContext* c)const{auto r=volumeRect();VSTGUI::CColor bg(24,22,18,230);c->setFillColor(bg);c->drawRect(r,VSTGUI::kDrawFilled);VSTGUI::CColor edge(116,83,50,210);c->setFrameColor(edge);c->drawRect(r,VSTGUI::kDrawStroked);double v=std::clamp(controller_->getParamNormalized(kPingVolumeId),0.0,1.0);auto fill=r;fill.right=fill.left+r.getWidth()*v;fill.inset(2.,2.);VSTGUI::CColor amber(180,87,20,210);c->setFillColor(amber);c->drawRect(fill,VSTGUI::kDrawFilled);char value[16];std::snprintf(value,sizeof(value),"%d%%",(int)std::lround(v*100.));c->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Arial",11.,VSTGUI::kBoldFace));c->setFontColor(VSTGUI::CColor(255,205,120,255));c->drawString(value,r,VSTGUI::kCenterText,true);}
-    EditController* controller_{nullptr};VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
-};
-
+class OptionsPanelView final:public VSTGUI::CView{public:OptionsPanelView(const VSTGUI::CRect&s,EditController*c):CView(s),c_(c){setMouseEnabled(true);timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){invalid();},100);}void draw(VSTGUI::CDrawContext*x)override{if(!open()){setDirty(false);return;}x->setDrawMode(VSTGUI::kAntiAliasing);auto p=getViewSize();p.inset(18,12);x->setFillColor(VSTGUI::CColor(8,8,7,242));x->drawRect(p,VSTGUI::kDrawFilled);VSTGUI::CColor frame(178,108,38,225);x->setFrameColor(frame);x->setLineWidth(1.);x->drawRect(p,VSTGUI::kDrawStroked);auto in=p;in.inset(3,3);frame.alpha=75;x->setFrameColor(frame);x->drawRect(in,VSTGUI::kDrawStroked);VSTGUI::CColor text(255,186,78,255);x->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Arial",16.,VSTGUI::kBoldFace));x->setFontColor(text);x->drawString("OPTIONS",VSTGUI::CRect(p.left,p.top+3,p.right,p.top+25),VSTGUI::kCenterText,true);x->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Arial",10.,VSTGUI::kBoldFace));x->drawString("LANGUAGE",label(0),VSTGUI::kLeftText,true);choice(x,language(0),"DEUTSCH",lang()==0);choice(x,language(1),"ENGLISH",lang()==1);x->drawString("INTERVAL",label(1),VSTGUI::kLeftText,true);static const char*l[6]={"5s","10s","15s","20s","25s","30s"};for(int i=0;i<6;++i)choice(x,interval(i),l[i],inter()==i);x->drawString("PING",label(2),VSTGUI::kLeftText,true);choice(x,toggle(2,0),"OFF",!ping());choice(x,toggle(2,1),"ON",ping());x->drawString("PING VOLUME",label(3),VSTGUI::kLeftText,true);volume(x,volumeRect(3),kPingVolumeId);x->drawString("VOICE",label(4),VSTGUI::kLeftText,true);choice(x,toggle(4,0),"OFF",!voice());choice(x,toggle(4,1),"ON",voice());x->drawString("VOICE VOLUME",label(5),VSTGUI::kLeftText,true);volume(x,volumeRect(5),kVoiceVolumeId);setDirty(false);}VSTGUI::CMouseEventResult onMouseDown(VSTGUI::CPoint&w,const VSTGUI::CButtonState&)override{if(!open()||!c_)return VSTGUI::kMouseEventNotHandled;for(int i=0;i<2;++i)if(language(i).pointInside(w)){setParameter(c_,kLanguageId,(double)i);invalid();return VSTGUI::kMouseEventHandled;}for(int i=0;i<6;++i)if(interval(i).pointInside(w)){setParameter(c_,kIntervalId,(double)i/5.);invalid();return VSTGUI::kMouseEventHandled;}if(toggle(2,0).pointInside(w)){setParameter(c_,kMessageSoundId,0.);invalid();return VSTGUI::kMouseEventHandled;}if(toggle(2,1).pointInside(w)){setParameter(c_,kMessageSoundId,1.);invalid();return VSTGUI::kMouseEventHandled;}if(toggle(4,0).pointInside(w)){setParameter(c_,kVoiceEnabledId,0.);invalid();return VSTGUI::kMouseEventHandled;}if(toggle(4,1).pointInside(w)){setParameter(c_,kVoiceEnabledId,1.);invalid();return VSTGUI::kMouseEventHandled;}if(volumeRect(3).pointInside(w)){setVol(w,3,kPingVolumeId);return VSTGUI::kMouseEventHandled;}if(volumeRect(5).pointInside(w)){setVol(w,5,kVoiceVolumeId);return VSTGUI::kMouseEventHandled;}return VSTGUI::kMouseEventHandled;}VSTGUI::CMouseEventResult onMouseMoved(VSTGUI::CPoint&w,const VSTGUI::CButtonState&b)override{if(open()&&b.isLeftButton()){for(auto q:std::initializer_list<std::pair<int,ParamID>>{{3,kPingVolumeId},{5,kVoiceVolumeId}}){auto r=volumeRect(q.first),d=r;d.left-=2;d.right+=4;d.top-=3;d.bottom+=3;if(d.pointInside(w)){setVol(w,q.first,q.second);return VSTGUI::kMouseEventHandled;}}}return VSTGUI::kMouseEventNotHandled;}private:bool open()const{return c_&&c_->getParamNormalized(kOptionsId)>=.5;}int lang()const{return std::clamp((int)std::lround(c_->getParamNormalized(kLanguageId)),0,1);}int inter()const{return std::clamp((int)std::lround(c_->getParamNormalized(kIntervalId)*5.),0,5);}bool ping()const{return c_->getParamNormalized(kMessageSoundId)>=.5;}bool voice()const{return c_->getParamNormalized(kVoiceEnabledId)>=.5;}VSTGUI::CRect row(int n)const{auto p=getViewSize();p.inset(18,12);double top=p.top+31+n*29;return VSTGUI::CRect(p.left+12,top,p.right-12,top+23);}VSTGUI::CRect label(int n)const{auto r=row(n);r.right=r.left+90;return r;}VSTGUI::CRect language(int i)const{auto r=row(0);double w=80,g=7,left=r.left+96+i*(w+g);return VSTGUI::CRect(left,r.top,left+w,r.bottom);}VSTGUI::CRect interval(int i)const{auto r=row(1);double left=r.left+70,g=3,total=r.getWidth()-70,w=(total-g*5)/6,x=left+i*(w+g);return VSTGUI::CRect(x,r.top,x+w,r.bottom);}VSTGUI::CRect toggle(int n,int i)const{auto r=row(n);double w=58,g=7,left=r.left+102+i*(w+g);return VSTGUI::CRect(left,r.top,left+w,r.bottom);}VSTGUI::CRect volumeRect(int n)const{auto r=row(n);r.left+=94;return r;}void setVol(const VSTGUI::CPoint&w,int n,ParamID id){auto r=volumeRect(n);double v=(w.x-r.left)/r.getWidth();if(w.x>=r.right-2)v=1.;else if(w.x<=r.left+2)v=0.;setParameter(c_,id,std::clamp(v,0.,1.));invalid();}void choice(VSTGUI::CDrawContext*x,VSTGUI::CRect r,const char*t,bool sel)const{x->setFillColor(sel?VSTGUI::CColor(122,63,18,185):VSTGUI::CColor(24,22,18,220));x->drawRect(r,VSTGUI::kDrawFilled);x->setFrameColor(sel?VSTGUI::CColor(255,151,44,245):VSTGUI::CColor(116,83,50,190));x->setLineWidth(1.);x->drawRect(r,VSTGUI::kDrawStroked);x->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Arial",10.,VSTGUI::kBoldFace));x->setFontColor(sel?VSTGUI::CColor(255,194,93,255):VSTGUI::CColor(199,167,126,255));x->drawString(t,r,VSTGUI::kCenterText,true);}void volume(VSTGUI::CDrawContext*x,VSTGUI::CRect r,ParamID id)const{x->setFillColor(VSTGUI::CColor(24,22,18,230));x->drawRect(r,VSTGUI::kDrawFilled);x->setFrameColor(VSTGUI::CColor(116,83,50,210));x->drawRect(r,VSTGUI::kDrawStroked);double v=std::clamp(c_->getParamNormalized(id),0.,1.);auto f=r;f.right=f.left+r.getWidth()*v;f.inset(2,2);x->setFillColor(VSTGUI::CColor(180,87,20,210));x->drawRect(f,VSTGUI::kDrawFilled);char s[16];std::snprintf(s,sizeof(s),"%d%%",(int)std::lround(v*100.));x->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Arial",10.,VSTGUI::kBoldFace));x->setFontColor(VSTGUI::CColor(255,205,120,255));x->drawString(s,r,VSTGUI::kCenterText,true);}EditController*c_;VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer>timer_;};
 } // namespace
-
-MotivatoratorEditor::MotivatoratorEditor(EditController* controller):VST3Editor(controller,"view","Motivatorator.uidesc"),controller_(controller){}
-VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attributes,const VSTGUI::IUIDescription* description){if(const auto name=attributes.getAttributeValue(VSTGUI::IUIDescription::kCustomViewName)){if(*name=="CharacterView")return new CharacterView(VSTGUI::CRect(18.,82.,335.,352.),controller_);if(*name=="ModeTitleView")return new ModeTitleView(VSTGUI::CRect(100.,10.,304.,48.),controller_);if(*name=="PhraseView")return new PhraseView(VSTGUI::CRect(315.,90.,665.,330.),controller_);if(*name=="ModeMotivator")return new ParameterButtonView(VSTGUI::CRect(242.,368.,312.,409.),controller_,kModeId,0.0,VSTGUI::CColor(255,177,45,255));if(*name=="ModeDemotivator")return new ParameterButtonView(VSTGUI::CRect(315.,369.,399.,408.),controller_,kModeId,0.5,VSTGUI::CColor(230,56,36,255));if(*name=="ModeMixed")return new ParameterButtonView(VSTGUI::CRect(397.,367.,470.,410.),controller_,kModeId,1.0,VSTGUI::CColor(255,125,35,255));if(*name=="CharacterGnomi")return new ParameterButtonView(VSTGUI::CRect(500.,369.,574.,408.),controller_,kCharacterId,0.0,VSTGUI::CColor(255,156,38,255));if(*name=="CharacterRocky")return new ParameterButtonView(VSTGUI::CRect(579.,369.,653.,408.),controller_,kCharacterId,0.5,VSTGUI::CColor(255,156,38,255));if(*name=="CharacterDom")return new ParameterButtonView(VSTGUI::CRect(658.,369.,735.,408.),controller_,kCharacterId,1.0,VSTGUI::CColor(255,156,38,255));if(*name=="OptionsButton")return new OptionsButtonView(VSTGUI::CRect(580.,8.,710.,52.),controller_);if(*name=="OptionsPanel")return new OptionsPanelView(VSTGUI::CRect(315.,90.,665.,330.),controller_);}return VSTGUI::VST3Editor::createView(attributes,description);}
-
+MotivatoratorEditor::MotivatoratorEditor(EditController*c):VST3Editor(c,"view","Motivatorator.uidesc"),controller_(c){}
+VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes&a,const VSTGUI::IUIDescription*d){if(const auto n=a.getAttributeValue(VSTGUI::IUIDescription::kCustomViewName)){if(*n=="CharacterView")return new CharacterView(VSTGUI::CRect(18,82,335,352),controller_);if(*n=="ModeTitleView")return new ModeTitleView(VSTGUI::CRect(100,10,304,48),controller_);if(*n=="PhraseView")return new PhraseView(VSTGUI::CRect(315,90,665,330),controller_);if(*n=="ModeMotivator")return new ParameterButtonView(VSTGUI::CRect(242,368,312,409),controller_,kModeId,0.,VSTGUI::CColor(255,177,45,255));if(*n=="ModeDemotivator")return new ParameterButtonView(VSTGUI::CRect(315,369,399,408),controller_,kModeId,.5,VSTGUI::CColor(230,56,36,255));if(*n=="ModeMixed")return new ParameterButtonView(VSTGUI::CRect(397,367,470,410),controller_,kModeId,1.,VSTGUI::CColor(255,125,35,255));if(*n=="CharacterGnomi")return new ParameterButtonView(VSTGUI::CRect(500,369,574,408),controller_,kCharacterId,0.,VSTGUI::CColor(255,156,38,255));if(*n=="CharacterRocky")return new ParameterButtonView(VSTGUI::CRect(579,369,653,408),controller_,kCharacterId,.5,VSTGUI::CColor(255,156,38,255));if(*n=="CharacterDom")return new ParameterButtonView(VSTGUI::CRect(658,369,735,408),controller_,kCharacterId,1.,VSTGUI::CColor(255,156,38,255));if(*n=="OptionsButton")return new OptionsButtonView(VSTGUI::CRect(580,8,710,52),controller_);if(*n=="OptionsPanel")return new OptionsPanelView(VSTGUI::CRect(315,90,665,330),controller_);}return VSTGUI::VST3Editor::createView(a,d);}
 } // namespace Steinberg::Vst
