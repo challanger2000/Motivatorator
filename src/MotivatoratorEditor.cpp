@@ -17,7 +17,6 @@ public:
         positive_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_positive.png"));
         negative_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_negative.png"));
 
-        // Keep the original HiDPI bitmaps and expose a smaller logical size.
         if (positive_ && positive_->getPlatformBitmap())
             positive_->getPlatformBitmap()->setScaleFactor(6.0);
         if (negative_ && negative_->getPlatformBitmap())
@@ -46,7 +45,7 @@ public:
         auto bitmap = useNegative ? negative_ : positive_;
         if (bitmap) {
             const auto r = getViewSize();
-            VSTGUI::CRect dest(0., 0., r.getWidth(), r.getHeight());
+            VSTGUI::CRect dest(r.left, r.top, r.right, r.bottom);
             bitmap->draw(context, dest, VSTGUI::CPoint(0., 0.), 1.f);
         }
         setDirty(false);
@@ -62,7 +61,9 @@ private:
 class ModeHitView final : public VSTGUI::CView {
 public:
     ModeHitView(const VSTGUI::CRect& size, EditController* controller, double value)
-    : CView(size), controller_(controller), value_(value) {}
+    : CView(size), controller_(controller), value_(value) {
+        setMouseEnabled(true);
+    }
 
     void draw(VSTGUI::CDrawContext*) override { setDirty(false); }
 
@@ -91,14 +92,16 @@ MotivatoratorEditor::MotivatoratorEditor(EditController* controller)
 VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attributes,
                                                 const VSTGUI::IUIDescription* description) {
     if (const auto name = attributes.getAttributeValue(VSTGUI::IUIDescription::kCustomViewName)) {
+        // Custom views keep the rectangle supplied here. Use the real GUI coordinates;
+        // otherwise every custom view starts at 0,0 regardless of its UIDesc position.
         if (*name == "CharacterView")
-            return new CharacterView(VSTGUI::CRect(0., 0., 260., 210.), controller_);
+            return new CharacterView(VSTGUI::CRect(18., 72., 278., 282.), controller_);
         if (*name == "ModeMotivator")
-            return new ModeHitView(VSTGUI::CRect(0., 0., 69., 39.), controller_, 0.0);
+            return new ModeHitView(VSTGUI::CRect(241., 369., 310., 408.), controller_, 0.0);
         if (*name == "ModeDemotivator")
-            return new ModeHitView(VSTGUI::CRect(0., 0., 84., 39.), controller_, 0.5);
+            return new ModeHitView(VSTGUI::CRect(315., 369., 399., 408.), controller_, 0.5);
         if (*name == "ModeMixed")
-            return new ModeHitView(VSTGUI::CRect(0., 0., 66., 39.), controller_, 1.0);
+            return new ModeHitView(VSTGUI::CRect(404., 369., 470., 408.), controller_, 1.0);
     }
     return VSTGUI::VST3Editor::createView(attributes, description);
 }
