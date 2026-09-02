@@ -19,8 +19,6 @@ public:
         positive_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_positive.png"));
         negative_ = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription("gnomi_negative.png"));
 
-        // The uploaded cutouts are roughly 1290x1210 px. At 4.5x they render
-        // about 289x270 logical pixels and fit the accepted GNOMI position.
         if (positive_ && positive_->getPlatformBitmap())
             positive_->getPlatformBitmap()->setScaleFactor(4.5);
         if (negative_ && negative_->getPlatformBitmap())
@@ -61,6 +59,33 @@ private:
     VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
 };
 
+static void drawButtonGlow(VSTGUI::CDrawContext* context,
+                           VSTGUI::CRect rect,
+                           const VSTGUI::CColor& color) {
+    // Match the dark inner face of the baked button instead of outlining the
+    // larger metal housing.  The previous glow was visibly too close to the bezel.
+    rect.inset(6., 5.);
+
+    VSTGUI::CColor fill = color;
+    fill.alpha = 34;
+    context->setFillColor(fill);
+    context->drawRect(rect, VSTGUI::kDrawFilled);
+
+    VSTGUI::CColor edge = color;
+    edge.alpha = 205;
+    context->setFrameColor(edge);
+    context->setLineWidth(1.0);
+    context->drawRect(rect, VSTGUI::kDrawStroked);
+
+    auto inner = rect;
+    inner.inset(2., 2.);
+    VSTGUI::CColor innerEdge = color;
+    innerEdge.alpha = 72;
+    context->setFrameColor(innerEdge);
+    context->setLineWidth(1.0);
+    context->drawRect(inner, VSTGUI::kDrawStroked);
+}
+
 class ModeButtonView final : public VSTGUI::CView {
 public:
     ModeButtonView(const VSTGUI::CRect& size, EditController* controller, double value,
@@ -78,33 +103,8 @@ public:
         }
 
         const double current = controller_->getParamNormalized(kModeId);
-        const bool active = std::abs(current - value_) < 0.20;
-
-        if (active) {
-            auto r = getViewSize();
-            r.inset(3., 4.);
-
-            // Soft inner glow over the labels already painted into the background.
-            VSTGUI::CColor soft = glowColor_;
-            soft.alpha = 42;
-            context->setFillColor(soft);
-            context->drawRect(r, VSTGUI::kDrawFilled);
-
-            // Bright border gives immediate, unambiguous active-state feedback.
-            VSTGUI::CColor edge = glowColor_;
-            edge.alpha = 220;
-            context->setFrameColor(edge);
-            context->setLineWidth(1.6);
-            context->drawRect(r, VSTGUI::kDrawStroked);
-
-            auto inner = r;
-            inner.inset(2., 2.);
-            VSTGUI::CColor innerEdge = glowColor_;
-            innerEdge.alpha = 95;
-            context->setFrameColor(innerEdge);
-            context->setLineWidth(1.0);
-            context->drawRect(inner, VSTGUI::kDrawStroked);
-        }
+        if (std::abs(current - value_) < 0.20)
+            drawButtonGlow(context, getViewSize(), glowColor_);
 
         setDirty(false);
     }
@@ -119,6 +119,36 @@ public:
         controller_->endEdit(kModeId);
         invalid();
         return VSTGUI::kMouseEventHandled;
+    }
+
+private:
+    EditController* controller_ {nullptr};
+    double value_ {0.0};
+    VSTGUI::CColor glowColor_;
+    VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
+};
+
+class CharacterIndicatorView final : public VSTGUI::CView {
+public:
+    CharacterIndicatorView(const VSTGUI::CRect& size, EditController* controller, double value,
+                           const VSTGUI::CColor& glowColor)
+    : CView(size), controller_(controller), value_(value), glowColor_(glowColor) {
+        setMouseEnabled(false);
+        timer_ = VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>(
+            [this](VSTGUI::CVSTGUITimer*) { invalid(); }, 100);
+    }
+
+    void draw(VSTGUI::CDrawContext* context) override {
+        if (!controller_) {
+            setDirty(false);
+            return;
+        }
+
+        const double current = controller_->getParamNormalized(kCharacterId);
+        if (std::abs(current - value_) < 0.20)
+            drawButtonGlow(context, getViewSize(), glowColor_);
+
+        setDirty(false);
     }
 
 private:
@@ -147,6 +177,9 @@ VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attri
         if (*name == "ModeMixed")
             return new ModeButtonView(VSTGUI::CRect(404., 369., 470., 408.), controller_, 1.0,
                                       VSTGUI::CColor(255, 125, 35, 255));
+        if (*name == "CharacterGnomi")
+            return new CharacterIndicatorView(VSTGUI::CRect(500., 369., 574., 408.), controller_, 0.0,
+                                              VSTGUI::CColor(255, 156, 38, 255));
     }
     return VSTGUI::VST3Editor::createView(attributes, description);
 }
