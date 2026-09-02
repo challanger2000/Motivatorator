@@ -19,6 +19,10 @@ jobs:
         shell: pwsh
         run: python tools/validate_phrase_candidates.py
 
+      - name: Validate English phrase bank
+        shell: pwsh
+        run: python tools/validate_english_phrase_candidates.py
+
       - name: Configure
         shell: pwsh
         run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DSMTG_CREATE_PLUGIN_LINK=0 -DSMTG_CREATE_BUNDLE_FOR_WINDOWS=1
