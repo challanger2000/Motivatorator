@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <vstgui-ui-description version="1">
   <bitmaps>
-    <bitmap name="mainBackground" path="motivatorator_main_bg_rgb.png"/>
+    <bitmap name="mainBackground" path="motivator_base_760x428.png"/>
   </bitmaps>
 
-  <template name="view" class="CViewContainer" size="760,380" bitmap="mainBackground">
+  <template name="view" class="CViewContainer" size="760,428" bitmap="mainBackground">
   </template>
 </vstgui-ui-description>
