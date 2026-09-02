@@ -56,7 +56,7 @@ private:
     static VSTGUI::SharedPointer<VSTGUI::CBitmap> load(const char* name) {
         auto bitmap = VSTGUI::makeOwned<VSTGUI::CBitmap>(VSTGUI::CResourceDescription(name));
         if (bitmap && bitmap->getPlatformBitmap())
-            bitmap->getPlatformBitmap()->setScaleFactor(4.5);
+            bitmap->getPlatformBitmap()->setScaleFactor(2.0);
         return bitmap;
     }
 
@@ -124,8 +124,6 @@ VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attri
                                                 const VSTGUI::IUIDescription* description) {
     if (const auto name = attributes.getAttributeValue(VSTGUI::IUIDescription::kCustomViewName)) {
         if (*name == "CharacterView") return new CharacterView(VSTGUI::CRect(18., 82., 335., 352.), controller_);
-        // DEMOTIVATOR was the visual reference that already matched. MOTIVATOR and MIXED
-        // get individually tightened bounds to follow their baked button faces.
         if (*name == "ModeMotivator") return new ParameterButtonView(VSTGUI::CRect(244., 369., 309., 408.), controller_, kModeId, 0.0, VSTGUI::CColor(255,177,45,255));
         if (*name == "ModeDemotivator") return new ParameterButtonView(VSTGUI::CRect(315., 369., 399., 408.), controller_, kModeId, 0.5, VSTGUI::CColor(230,56,36,255));
         if (*name == "ModeMixed") return new ParameterButtonView(VSTGUI::CRect(406., 369., 469., 408.), controller_, kModeId, 1.0, VSTGUI::CColor(255,125,35,255));
