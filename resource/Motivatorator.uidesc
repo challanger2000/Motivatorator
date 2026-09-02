@@ -1,49 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <vstgui-ui-description version="1">
-  <bitmaps>
-    <bitmap name="mainbg" path="motivatorator_main_bg.png"/>
-  </bitmaps>
-  <control-tags>
-    <control-tag name="mode" tag="100"/>
-    <control-tag name="mute" tag="102"/>
-    <control-tag name="options" tag="103"/>
-    <control-tag name="language" tag="104"/>
-    <control-tag name="interval" tag="105"/>
-    <control-tag name="character" tag="106"/>
-    <control-tag name="phrase" tag="107"/>
-  </control-tags>
-  <fonts>
-    <font name="small" font-name="Arial" size="11" bold="true"/>
-    <font name="option" font-name="Arial" size="13" bold="true"/>
-    <font name="brand" font-name="Arial" size="24" bold="true"/>
-  </fonts>
   <colors>
-    <color name="metal" rgba="#403c34ff"/>
-    <color name="metalDark" rgba="#171512f7"/>
-    <color name="cream" rgba="#e7dfc8ff"/>
-    <color name="amber" rgba="#e4a84cff"/>
-    <color name="muted" rgba="#aaa38fff"/>
-    <color name="transparent" rgba="#00000000"/>
+    <color name="testBackground" rgba="#252525ff"/>
+    <color name="testText" rgba="#f0f0f0ff"/>
   </colors>
+  <fonts>
+    <font name="testFont" font-name="Arial" size="22" bold="true"/>
+  </fonts>
 
-  <!-- Main artwork is now the background of the root container itself.
-       This avoids a full-size child CView and follows the normal VSTGUI background path. -->
-  <template name="view" class="CViewContainer" size="760,430" bitmap="mainbg">
-    <view class="CTextButton" origin="604,4" size="112,44" title="" control-tag="options" kick-style="true" transparent="true" frame-width="0" text-color="transparent" text-color-highlighted="transparent" gradient-start-color="transparent" gradient-end-color="transparent" gradient-start-color-hightlighted="transparent" gradient-end-color-highlighted="transparent"/>
-
-    <view class="CViewContainer" origin="30,54" size="700,326" background-color="metalDark" custom-view-name="OptionsPanel">
-      <view class="CTextLabel" origin="24,16" size="300,32" title="OPTIONS" font="brand" font-color="amber" transparent="true"/>
-      <view class="CTextLabel" origin="24,72" size="120,20" title="MODE" font="small" font-color="muted" transparent="true"/>
-      <view class="COptionMenu" origin="154,66" size="220,32" control-tag="mode" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
-      <view class="CTextLabel" origin="24,116" size="120,20" title="CHARACTER" font="small" font-color="muted" transparent="true"/>
-      <view class="COptionMenu" origin="154,110" size="220,32" control-tag="character" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
-      <view class="CTextLabel" origin="24,160" size="120,20" title="LANGUAGE" font="small" font-color="muted" transparent="true"/>
-      <view class="COptionMenu" origin="154,154" size="220,32" control-tag="language" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
-      <view class="CTextLabel" origin="24,204" size="120,20" title="INTERVAL" font="small" font-color="muted" transparent="true"/>
-      <view class="COptionMenu" origin="154,198" size="220,32" control-tag="interval" font="option" font-color="cream" back-color="metal" frame-color="amber" menu-check-style="true"/>
-      <view class="CTextLabel" origin="414,72" size="100,20" title="SILENCE" font="small" font-color="muted" transparent="true"/>
-      <view class="CTextButton" origin="516,66" size="148,32" title="MUTE ME" control-tag="mute" font="option" text-color="cream" back-color="metal" frame-color="amber"/>
-      <view class="CTextButton" origin="516,266" size="148,36" title="BACK" control-tag="options" font="option" text-color="amber" back-color="metal" frame-color="amber" kick-style="true"/>
-    </view>
+  <template name="view" class="CViewContainer" size="760,430" background-color="testBackground">
+    <view class="CTextLabel" origin="180,190" size="400,50" title="MOTIVATORATOR GUI TEST" font="testFont" font-color="testText" transparent="true" text-alignment="center"/>
   </template>
 </vstgui-ui-description>
