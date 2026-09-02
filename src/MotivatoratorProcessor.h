@@ -18,7 +18,9 @@ enum MotivatoratorParams : ParamID {
     kIntervalId = 105,
     kCharacterId = 106,
     kPhraseId = 107,
-    kPhraseToneId = 108
+    kPhraseToneId = 108,
+    kMessageSoundId = 109,
+    kPingVolumeId = 110
 };
 
 class MotivatoratorProcessor final : public AudioEffect {
@@ -37,6 +39,8 @@ private:
     void chooseNextPhrase();
     void emitPhrase(ProcessData& data);
     void resetIntervalCounter();
+    void triggerPing();
+    void mixPing(ProcessData& data);
     int nextDeckIndex(bool motivator);
 
     double sampleRate_ {44100.0};
@@ -49,6 +53,11 @@ private:
     bool mixedNextPositive_ {true};
     bool phrasePositive_ {true};
     bool needsPhraseEmit_ {true};
+    bool messageSound_ {true};
+    double pingVolume_ {0.5};
+    int64 pingSamplesRemaining_ {0};
+    int64 pingSamplesTotal_ {0};
+    double pingPhase_ {0.0};
     uint32_t mixedRandomState_ {0xA341316Cu};
     int motivatorPos_ {0};
     int demotivatorPos_ {0};
