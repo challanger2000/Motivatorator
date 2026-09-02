@@ -110,8 +110,8 @@ void MotivatoratorProcessor::emitPhrase(ProcessData& data){
 }
 
 void MotivatoratorProcessor::resetIntervalCounter(){
-    static const int seconds[]={15,30,60,120,300}; int sec=60;
-    if(interval_<5) sec=seconds[interval_]; else {intervalRng_^=intervalRng_<<13;intervalRng_^=intervalRng_>>17;intervalRng_^=intervalRng_<<5;sec=20+(intervalRng_%101);}
+    static const int seconds[]={5,10,15,20,25,30};
+    const int sec=seconds[std::clamp(interval_,0,5)];
     samplesUntilNext_=std::max<int64>(1,(int64)(sampleRate_*sec));
 }
 
@@ -128,7 +128,7 @@ tresult PLUGIN_API MotivatoratorController::initialize(FUnknown* context){
     auto* mode=new StringListParameter(STR16("Mode"),kModeId);mode->appendString(STR16("MOTIVATOR"));mode->appendString(STR16("DEMOTIVATOR"));mode->appendString(STR16("MIXED"));parameters.addParameter(mode);
     parameters.addParameter(STR16("Next"),nullptr,1,0.0,ParameterInfo::kCanAutomate,kNextId);parameters.addParameter(STR16("Mute Me"),nullptr,1,0.0,ParameterInfo::kCanAutomate,kMuteId);parameters.addParameter(STR16("Options"),nullptr,1,0.0,0,kOptionsId);
     auto* lang=new StringListParameter(STR16("Language"),kLanguageId);lang->appendString(STR16("Deutsch"));lang->appendString(STR16("English"));parameters.addParameter(lang);
-    auto* interval=new StringListParameter(STR16("Interval"),kIntervalId);interval->appendString(STR16("15 sec"));interval->appendString(STR16("30 sec"));interval->appendString(STR16("1 min"));interval->appendString(STR16("2 min"));interval->appendString(STR16("5 min"));interval->appendString(STR16("Random"));parameters.addParameter(interval);interval->setNormalized(0.4);
+    auto* interval=new StringListParameter(STR16("Interval"),kIntervalId);interval->appendString(STR16("5 sec"));interval->appendString(STR16("10 sec"));interval->appendString(STR16("15 sec"));interval->appendString(STR16("20 sec"));interval->appendString(STR16("25 sec"));interval->appendString(STR16("30 sec"));parameters.addParameter(interval);interval->setNormalized(0.4);
     auto* character=new StringListParameter(STR16("Character"),kCharacterId);character->appendString(STR16("GNOMI"));character->appendString(STR16("ROCKY"));character->appendString(STR16("D.O.M."));parameters.addParameter(character);
     auto* phrase=new StringListParameter(STR16("Phrase"),kPhraseId);for(const auto& p:kMotivator)phrase->appendString(p.de);for(const auto& p:kDemotivator)phrase->appendString(p.de);for(const auto& p:kMotivator)phrase->appendString(p.en);for(const auto& p:kDemotivator)phrase->appendString(p.en);parameters.addParameter(phrase);
     auto* tone=new StringListParameter(STR16("Phrase Tone"),kPhraseToneId);tone->appendString(STR16("POSITIVE"));tone->appendString(STR16("NEGATIVE"));parameters.addParameter(tone);return kResultOk;
