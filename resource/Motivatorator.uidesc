@@ -31,10 +31,9 @@
   <template name="view" class="CViewContainer" size="760,430">
     <view class="CView" origin="0,0" size="760,430" bitmap="mainbg"/>
 
-    <!-- Dynamic phrase: clipped strictly to the CRT glass. -->
-    <view class="CViewContainer" origin="338,116" size="292,176" background-color="transparent" transparent="true">
-      <view class="CParamDisplay" origin="292,0" size="560,176" control-tag="phrase" custom-view-name="PhraseTicker" font="screen" font-color="screenGlow" back-color="transparent" frame-color="transparent" frame-width="0" style-no-frame="true" transparent="true" text-alignment="left"/>
-    </view>
+    <!-- Stable fixed phrase display inside the CRT glass. The scrolling implementation
+         will be reintroduced with a dedicated custom view instead of moving this control. -->
+    <view class="CParamDisplay" origin="352,144" size="250,116" control-tag="phrase" font="screen" font-color="screenGlow" back-color="transparent" frame-color="transparent" frame-width="0" style-no-frame="true" transparent="true" text-alignment="center"/>
 
     <!-- Invisible click target exactly over the rendered OPTIONS plate. -->
     <view class="CTextButton" origin="604,4" size="112,44" title="" control-tag="options" kick-style="true" transparent="true" frame-width="0" text-color="transparent" text-color-highlighted="transparent" gradient-start-color="transparent" gradient-end-color="transparent" gradient-start-color-hightlighted="transparent" gradient-end-color-highlighted="transparent"/>
