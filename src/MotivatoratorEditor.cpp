@@ -3,6 +3,7 @@
 #include "vstgui/lib/cbitmap.h"
 #include "vstgui/lib/ccolor.h"
 #include "vstgui/lib/cdrawcontext.h"
+#include "vstgui/lib/cfont.h"
 #include "vstgui/lib/cvstguitimer.h"
 #include "vstgui/uidescription/uiattributes.h"
 #include <algorithm>
@@ -41,41 +42,37 @@ private:
     VSTGUI::SharedPointer<VSTGUI::CBitmap> gnomiPositive_,gnomiNegative_,rockyPositive_,rockyNegative_,domPositive_,domNegative_;
     VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
 };
+
+class ModeTitleView final : public VSTGUI::CView {
+public:
+    ModeTitleView(const VSTGUI::CRect& size, EditController* controller) : CView(size), controller_(controller) {
+        setMouseEnabled(false);
+        timer_=VSTGUI::makeOwned<VSTGUI::CVSTGUITimer>([this](VSTGUI::CVSTGUITimer*){invalid();},100);
+    }
+    void draw(VSTGUI::CDrawContext* context) override {
+        if(!controller_){setDirty(false);return;}
+        const int mode=std::clamp(static_cast<int>(std::lround(controller_->getParamNormalized(kModeId)*2.0)),0,2);
+        const char* text=mode==0?"MOTIVATOR":(mode==1?"DEMOTIVATOR":"MIXED");
+        VSTGUI::CColor color=mode==0?VSTGUI::CColor(255,184,70,255):(mode==1?VSTGUI::CColor(238,72,45,255):VSTGUI::CColor(255,137,48,255));
+        auto rect=getViewSize();
+        context->setFont(VSTGUI::makeOwned<VSTGUI::CFontDesc>("Arial",22.,VSTGUI::kBoldFace));
+        context->setFontColor(color);
+        context->setDrawMode(VSTGUI::kAntiAliasing);
+        context->drawString(text,rect,VSTGUI::kCenterText,true);
+        setDirty(false);
+    }
+private:
+    EditController* controller_{nullptr};
+    VSTGUI::SharedPointer<VSTGUI::CVSTGUITimer> timer_;
+};
+
 static void drawButtonGlow(VSTGUI::CDrawContext* context,VSTGUI::CRect rect,const VSTGUI::CColor& color){
-    // Stronger illuminated state: more light in the button face plus several soft inner halos.
     rect.inset(2.,2.);
-
-    VSTGUI::CColor fill=color;
-    fill.alpha=58;
-    context->setFillColor(fill);
-    context->drawRect(rect,VSTGUI::kDrawFilled);
-
-    VSTGUI::CColor edge=color;
-    edge.alpha=245;
-    context->setFrameColor(edge);
-    context->setLineWidth(1.0);
-    context->drawRect(rect,VSTGUI::kDrawStroked);
-
-    auto halo1=rect;
-    halo1.inset(1.,1.);
-    VSTGUI::CColor halo1Color=color;
-    halo1Color.alpha=150;
-    context->setFrameColor(halo1Color);
-    context->drawRect(halo1,VSTGUI::kDrawStroked);
-
-    auto halo2=rect;
-    halo2.inset(3.,3.);
-    VSTGUI::CColor halo2Color=color;
-    halo2Color.alpha=88;
-    context->setFrameColor(halo2Color);
-    context->drawRect(halo2,VSTGUI::kDrawStroked);
-
-    auto halo3=rect;
-    halo3.inset(5.,5.);
-    VSTGUI::CColor halo3Color=color;
-    halo3Color.alpha=42;
-    context->setFrameColor(halo3Color);
-    context->drawRect(halo3,VSTGUI::kDrawStroked);
+    VSTGUI::CColor fill=color; fill.alpha=58; context->setFillColor(fill); context->drawRect(rect,VSTGUI::kDrawFilled);
+    VSTGUI::CColor edge=color; edge.alpha=245; context->setFrameColor(edge); context->setLineWidth(1.0); context->drawRect(rect,VSTGUI::kDrawStroked);
+    auto halo1=rect; halo1.inset(1.,1.); VSTGUI::CColor halo1Color=color; halo1Color.alpha=150; context->setFrameColor(halo1Color); context->drawRect(halo1,VSTGUI::kDrawStroked);
+    auto halo2=rect; halo2.inset(3.,3.); VSTGUI::CColor halo2Color=color; halo2Color.alpha=88; context->setFrameColor(halo2Color); context->drawRect(halo2,VSTGUI::kDrawStroked);
+    auto halo3=rect; halo3.inset(5.,5.); VSTGUI::CColor halo3Color=color; halo3Color.alpha=42; context->setFrameColor(halo3Color); context->drawRect(halo3,VSTGUI::kDrawStroked);
 }
 class ParameterButtonView final : public VSTGUI::CView {
 public:
@@ -90,6 +87,7 @@ MotivatoratorEditor::MotivatoratorEditor(EditController* controller):VST3Editor(
 VSTGUI::CView* MotivatoratorEditor::createView(const VSTGUI::UIAttributes& attributes,const VSTGUI::IUIDescription* description){
     if(const auto name=attributes.getAttributeValue(VSTGUI::IUIDescription::kCustomViewName)){
         if(*name=="CharacterView") return new CharacterView(VSTGUI::CRect(18.,82.,335.,352.),controller_);
+        if(*name=="ModeTitleView") return new ModeTitleView(VSTGUI::CRect(45.,18.,250.,58.),controller_);
         if(*name=="ModeMotivator") return new ParameterButtonView(VSTGUI::CRect(242.,368.,312.,409.),controller_,kModeId,0.0,VSTGUI::CColor(255,177,45,255));
         if(*name=="ModeDemotivator") return new ParameterButtonView(VSTGUI::CRect(315.,369.,399.,408.),controller_,kModeId,0.5,VSTGUI::CColor(230,56,36,255));
         if(*name=="ModeMixed") return new ParameterButtonView(VSTGUI::CRect(397.,367.,470.,410.),controller_,kModeId,1.0,VSTGUI::CColor(255,125,35,255));
