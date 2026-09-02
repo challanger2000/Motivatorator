@@ -16,13 +16,11 @@ FILES = sorted(PHRASE_DIR.glob("CuratedGermanBatch*.inc"))
 
 PHRASE_RE = re.compile(r'^u"(.*)",\s*$')
 
-# Gendered/direct-address words deliberately excluded from the final bank.
 FORBIDDEN = {
     "habibi", "bruder", "junge", "mann", "meister", "könig", "koenig",
     "chef", "professor", "eier",
 }
 
-# Concrete production references make the companion less universal.
 CONTENT_FORBIDDEN = {
     "gitarre", "gitarren", "bassgitarre", "schlagzeug", "drums", "drum",
     "klavier", "piano", "synth", "synthesizer", "serum", "spire", "dune",
@@ -30,9 +28,12 @@ CONTENT_FORBIDDEN = {
     "vst", "vst3", "plugin", "plugins", "techno", "metal", "rock", "house",
 }
 
-# These are fine in moderation. They are editorial signals rather than structural
-# failures, because a deliberately blunt character may legitimately use them more
-# often than a neutral prose corpus would.
+# A tiny explicit exception list preserves the universal-bank rule while allowing
+# deliberately wrong, clueless studio guesses whose incorrect specificity is the joke.
+CONTENT_EXCEPTIONS = {
+    "die gitarre ist wohl toll verstimmt",
+}
+
 WATCH_OPENERS = {
     "okay", "boah", "uff", "verdammt", "scheiße", "scheisse", "alter",
 }
@@ -85,7 +86,7 @@ def main() -> int:
             print(f"ERROR forbidden address {hit}: {path.name}:{lineno}: {text}")
 
         content_hit = sorted(w for w in CONTENT_FORBIDDEN if re.search(rf"\b{re.escape(norm(w))}\b", n))
-        if content_hit:
+        if content_hit and n not in CONTENT_EXCEPTIONS:
             errors += 1
             print(f"ERROR concrete content {content_hit}: {path.name}:{lineno}: {text}")
 
@@ -111,8 +112,6 @@ def main() -> int:
         elif count > WARN_WATCHED_OPENER:
             print(f"WARN opener '{opener}' used {count} times; editorial target <= {WARN_WATCHED_OPENER}")
 
-    # Flag suspiciously similar entries. This is intentionally conservative:
-    # exact duplicates fail above; high token overlap is a review warning only.
     for i, (p1, l1, s1, t1) in enumerate(rows):
         a = tokens(t1)
         if len(a) < 5:
