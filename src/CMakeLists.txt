@@ -24,6 +24,8 @@ smtg_add_vst3plugin(Motivatorator
     MotivatoratorEditor.cpp
     MotivatoratorEditor.h
     MotivatoratorFactory.cpp
+    VoicePrototype.cpp
+    VoicePrototype.h
     "${MOTIVATORATOR_GENERATED_PHRASEBANK}")
 
 target_include_directories(Motivatorator PRIVATE "${MOTIVATORATOR_GENERATED_DIR}")
@@ -33,6 +35,7 @@ if(WIN32)
     target_sources(Motivatorator PRIVATE
         ${vst3sdk_SOURCE_DIR}/public.sdk/source/main/dllmain.cpp
     )
+    target_link_libraries(Motivatorator PRIVATE sapi ole32)
     if(MSVC)
         target_compile_options(Motivatorator PRIVATE /utf-8)
     endif()
