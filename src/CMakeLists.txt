@@ -11,6 +11,9 @@ if(WIN32)
     target_sources(Motivatorator PRIVATE
         ${vst3sdk_SOURCE_DIR}/public.sdk/source/main/dllmain.cpp
     )
+    if(MSVC)
+        target_compile_options(Motivatorator PRIVATE /utf-8)
+    endif()
 endif()
 
 smtg_target_add_plugin_resources(Motivatorator
