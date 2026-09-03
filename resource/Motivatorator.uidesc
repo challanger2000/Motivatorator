@@ -21,6 +21,6 @@
     <view class="CView" size="658,369,735,408" custom-view-name="CharacterDom" transparent="true"/>
     <view class="CView" size="580,8,710,52" custom-view-name="OptionsButton" transparent="true"/>
     <view class="CView" size="315,90,665,330" custom-view-name="OptionsPanel" transparent="true"/>
-    <view class="CTextLabel" origin="410,18" size="155,44" title="DEMO" font="DemoFont" font-color="DemoRed" text-alignment="center" transparent="true" mouse-enabled="false"/>
+    <view class="CTextLabel" origin="395,12" size="185,62" title="DEMO" font="DemoFont" font-color="DemoRed" text-alignment="center" text-rotation="-9" transparent="true" mouse-enabled="false"/>
   </template>
 </vstgui-ui-description>
