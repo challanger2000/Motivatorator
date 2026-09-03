@@ -1,14 +1,12 @@
 #pragma once
 
-#include <cstdint>
 #include <memory>
-#include <string>
-#include <vector>
 
 namespace Steinberg::Vst {
 
-// Experimental Windows-only TTS bridge. Synthesis is performed on a worker
-// thread; the realtime audio thread only consumes an already prepared buffer.
+// Windows-only TTS bridge. The realtime thread publishes only compact numeric
+// requests and consumes already prepared audio. Text lookup, TTS synthesis,
+// allocation and DSP all stay on the worker thread.
 class VoicePrototype {
 public:
     VoicePrototype();
@@ -18,7 +16,7 @@ public:
     VoicePrototype& operator=(const VoicePrototype&) = delete;
 
     void setSampleRate(double sampleRate);
-    void request(const std::u16string& text, int language, int character);
+    void request(int phraseGlobal, int character) noexcept;
     float nextSample() noexcept;
     void resetPlayback() noexcept;
 
