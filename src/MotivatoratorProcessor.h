@@ -10,8 +10,13 @@
 
 namespace Steinberg::Vst {
 
+#ifdef MOTIVATOR_DEMO
+static const FUID MotivatoratorProcessorUID(0x4D4F5449, 0x5644454D, 0x4F465830, 0x30303031);
+static const FUID MotivatoratorControllerUID(0x4D4F5449, 0x5644454D, 0x4F435430, 0x30303031);
+#else
 static const FUID MotivatoratorProcessorUID(0x4D4F5449, 0x5641544F, 0x52465830, 0x30303031);
 static const FUID MotivatoratorControllerUID(0x4D4F5449, 0x5641544F, 0x52435430, 0x30303031);
+#endif
 
 enum MotivatoratorParams : ParamID {
     kModeId = 100,
