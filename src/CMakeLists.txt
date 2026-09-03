@@ -18,7 +18,12 @@ if(NOT MOTIVATORATOR_PHRASEBANK_RESULT EQUAL 0)
 endif()
 message(STATUS "${MOTIVATORATOR_PHRASEBANK_OUTPUT}")
 
-smtg_add_vst3plugin(Motivator
+set(MOTIVATOR_TARGET Motivator)
+if(MOTIVATOR_DEMO_BUILD)
+    set(MOTIVATOR_TARGET MotivatorDemo)
+endif()
+
+smtg_add_vst3plugin(${MOTIVATOR_TARGET}
     MotivatoratorProcessor.cpp
     MotivatoratorProcessor.h
     MotivatoratorEditor.cpp
@@ -28,20 +33,24 @@ smtg_add_vst3plugin(Motivator
     VoicePrototype.h
     "${MOTIVATORATOR_GENERATED_PHRASEBANK}")
 
-target_include_directories(Motivator PRIVATE "${MOTIVATORATOR_GENERATED_DIR}")
-target_link_libraries(Motivator PRIVATE sdk vstgui_support)
+target_include_directories(${MOTIVATOR_TARGET} PRIVATE "${MOTIVATORATOR_GENERATED_DIR}")
+target_link_libraries(${MOTIVATOR_TARGET} PRIVATE sdk vstgui_support)
+
+if(MOTIVATOR_DEMO_BUILD)
+    target_compile_definitions(${MOTIVATOR_TARGET} PRIVATE MOTIVATOR_DEMO=1)
+endif()
 
 if(WIN32)
-    target_sources(Motivator PRIVATE
+    target_sources(${MOTIVATOR_TARGET} PRIVATE
         ${vst3sdk_SOURCE_DIR}/public.sdk/source/main/dllmain.cpp
     )
-    target_link_libraries(Motivator PRIVATE sapi ole32)
+    target_link_libraries(${MOTIVATOR_TARGET} PRIVATE sapi ole32)
     if(MSVC)
-        target_compile_options(Motivator PRIVATE /utf-8)
+        target_compile_options(${MOTIVATOR_TARGET} PRIVATE /utf-8)
     endif()
 endif()
 
-smtg_target_add_plugin_resources(Motivator
+smtg_target_add_plugin_resources(${MOTIVATOR_TARGET}
     RESOURCES
     ../resource/Motivatorator.uidesc
     ../resource/motivator_base_760x428.png
@@ -52,4 +61,4 @@ smtg_target_add_plugin_resources(Motivator
     ../resource/dom_positive.png
     ../resource/dom_negative.png)
 
-smtg_target_configure_version_file(Motivator)
+smtg_target_configure_version_file(${MOTIVATOR_TARGET})
