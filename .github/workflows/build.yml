@@ -1,8 +1,10 @@
-name: Build Windows VST3
+name: Build Windows VST3 150%
 
 on:
   workflow_dispatch:
   push:
+    branches:
+      - 150pct
 
 permissions:
   contents: read
@@ -23,15 +25,15 @@ jobs:
         shell: pwsh
         run: python tools/validate_english_phrase_candidates.py
 
-      - name: Configure
+      - name: Configure 150 percent build
         shell: pwsh
         run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DSMTG_CREATE_PLUGIN_LINK=0 -DSMTG_CREATE_BUNDLE_FOR_WINDOWS=1
 
-      - name: Build Motivator
+      - name: Build Motivator 150 percent
         id: build_step
         shell: pwsh
         run: |
-          cmake --build build --config Release --target Motivator --parallel 2>&1 | Tee-Object -FilePath build-log.txt
+          cmake --build build --config Release --target Motivator150 --parallel 2>&1 | Tee-Object -FilePath build-log.txt
           $code = $LASTEXITCODE
           if ($code -ne 0) { exit $code }
 
@@ -39,25 +41,25 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: Motivator-Build-Log
+          name: Motivator150-Build-Log
           path: build-log.txt
           if-no-files-found: warn
 
-      - name: Locate Motivator VST3 bundle
+      - name: Locate Motivator150 VST3 bundle
         shell: pwsh
         run: |
           $root = "$env:GITHUB_WORKSPACE\build"
           $artifact = "$env:GITHUB_WORKSPACE\artifact"
           New-Item -ItemType Directory -Force -Path $artifact | Out-Null
-          $bundles = Get-ChildItem $root -Recurse -Directory -Filter "Motivator.vst3" -ErrorAction SilentlyContinue
+          $bundles = Get-ChildItem $root -Recurse -Directory -Filter "Motivator150.vst3" -ErrorAction SilentlyContinue
           $p = $bundles | Where-Object { Test-Path (Join-Path $_.FullName "Contents") } | Select-Object -First 1
-          if (-not $p) { throw "Motivator.vst3 bundle not found" }
+          if (-not $p) { throw "Motivator150.vst3 bundle not found" }
           Write-Host "VST3 bundle: $($p.FullName)"
-          Copy-Item $p.FullName "$artifact\Motivator.vst3" -Recurse -Force
+          Copy-Item $p.FullName "$artifact\Motivator150.vst3" -Recurse -Force
 
-      - name: Upload Motivator VST3 bundle
+      - name: Upload Motivator150 VST3 bundle
         uses: actions/upload-artifact@v5
         with:
-          name: Motivator-Windows-VST3
+          name: Motivator150-Windows-VST3
           path: artifact
           if-no-files-found: error
