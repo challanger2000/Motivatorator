@@ -3,6 +3,7 @@
 #include "public.sdk/source/vst/vstaudioeffect.h"
 #include "public.sdk/source/vst/vsteditcontroller.h"
 #include "VoicePrototype.h"
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -49,7 +50,9 @@ private:
     void mixPing(ProcessData& data);
     void mixVoicePrototype(ProcessData& data);
     void requestVoicePrototype();
-    int nextDeckIndex(bool motivator);
+    void reshuffleDeck(bool motivator) noexcept;
+    int nextDeckIndex(bool motivator) noexcept;
+    static uint32_t nextRandom(uint32_t& state) noexcept;
 
     static uint32_t startupSeed() {
         static std::atomic<uint32_t> sequence {0};
@@ -74,12 +77,12 @@ private:
     int64 pingSamplesTotal_ {0};
     double pingPhase_ {0.0};
     uint32_t mixedRandomState_ {startupSeed() | 1u};
+    uint32_t motivatorShuffleState_ {startupSeed() | 1u};
+    uint32_t demotivatorShuffleState_ {startupSeed() | 1u};
+    std::array<uint16_t, 500> motivatorDeck_ {};
+    std::array<uint16_t, 500> demotivatorDeck_ {};
     int motivatorPos_ {0};
     int demotivatorPos_ {0};
-    int motivatorStart_ {static_cast<int>(startupSeed() % 500u)};
-    int demotivatorStart_ {static_cast<int>(startupSeed() % 500u)};
-    int motivatorStep_ {37};
-    int demotivatorStep_ {53};
     int currentPhraseGlobal_ {0};
     int64 samplesUntilNext_ {0};
     VoicePrototype voicePrototype_;
