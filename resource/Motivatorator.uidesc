@@ -3,15 +3,12 @@
   <bitmaps>
     <bitmap name="mainBackground" path="motivator_base_760x428.png"/>
   </bitmaps>
-
   <colors>
     <color name="DemoRed" rgba="#FF2020FF"/>
   </colors>
-
   <fonts>
-    <font name="DemoFont" font-name="Arial" size="20" bold="true"/>
+    <font name="DemoFont" font-name="Arial" size="30" bold="true"/>
   </fonts>
-
   <template name="view" class="CViewContainer" size="760,428" bitmap="mainBackground">
     <view class="CView" size="18,82,335,352" custom-view-name="CharacterView" transparent="true"/>
     <view class="CView" size="100,10,304,48" custom-view-name="ModeTitleView" transparent="true"/>
@@ -24,6 +21,6 @@
     <view class="CView" size="658,369,735,408" custom-view-name="CharacterDom" transparent="true"/>
     <view class="CView" size="580,8,710,52" custom-view-name="OptionsButton" transparent="true"/>
     <view class="CView" size="315,90,665,330" custom-view-name="OptionsPanel" transparent="true"/>
-    <view class="CTextLabel" size="685,54,752,82" title="DEMO" font="DemoFont" font-color="DemoRed" text-alignment="center" transparent="true" mouse-enabled="false"/>
+    <view class="CTextLabel" size="410,18,565,62" title="DEMO" font="DemoFont" font-color="DemoRed" text-alignment="center" transparent="true" mouse-enabled="false"/>
   </template>
 </vstgui-ui-description>
