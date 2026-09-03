@@ -12,21 +12,107 @@
 namespace Steinberg::Vst {
 using namespace MotivatoratorPhrases;
 namespace {
-constexpr int kModeMotivator=0,kModeDemotivator=1,kModeMixed=2; constexpr int32 kStateVersion=1; constexpr double kPi=3.14159265358979323846;
+constexpr int kModeMotivator=0,kModeDemotivator=1,kModeMixed=2;
+constexpr int32 kStateVersion=1;
+constexpr double kPi=3.14159265358979323846;
 int normalizedToIndex(ParamValue v,int count){return std::clamp(static_cast<int>(v*count),0,count-1);}
 }
-MotivatoratorProcessor::MotivatoratorProcessor(){setControllerClass(MotivatoratorControllerUID);}
+
+uint32_t MotivatoratorProcessor::nextRandom(uint32_t& state) noexcept {
+    state ^= state << 13;
+    state ^= state >> 17;
+    state ^= state << 5;
+    if(state==0) state=0x9E3779B9u;
+    return state;
+}
+
+MotivatoratorProcessor::MotivatoratorProcessor(){
+    setControllerClass(MotivatoratorControllerUID);
+    reshuffleDeck(true);
+    reshuffleDeck(false);
+}
+
 tresult PLUGIN_API MotivatoratorProcessor::initialize(FUnknown* context){auto result=AudioEffect::initialize(context);if(result!=kResultOk)return result;addAudioInput(STR16("Stereo In"),SpeakerArr::kStereo);addAudioOutput(STR16("Stereo Out"),SpeakerArr::kStereo);return kResultOk;}
 tresult PLUGIN_API MotivatoratorProcessor::setupProcessing(ProcessSetup& setup){sampleRate_=setup.sampleRate>1.0?setup.sampleRate:44100.0;pingSamplesRemaining_=0;pingSamplesTotal_=0;pingPhase_=0.0;voicePrototype_.setSampleRate(sampleRate_);voicePrototype_.resetPlayback();return AudioEffect::setupProcessing(setup);}
 tresult PLUGIN_API MotivatoratorProcessor::canProcessSampleSize(int32 s){return s==kSample32||s==kSample64?kResultTrue:kResultFalse;}
 
-tresult PLUGIN_API MotivatoratorProcessor::getState(IBStream* state){if(!state)return kInvalidArgument;IBStreamer s(state,kLittleEndian);s.writeInt32(kStateVersion);s.writeInt32(mode_);s.writeInt32(language_);s.writeInt32(interval_);s.writeInt32(character_);s.writeInt32(muted_?1:0);s.writeInt32(1);s.writeInt32(phrasePositive_?1:0);s.writeInt32(motivatorPos_);s.writeInt32(demotivatorPos_);s.writeInt32(motivatorStart_);s.writeInt32(demotivatorStart_);s.writeInt32(motivatorStep_);s.writeInt32(demotivatorStep_);s.writeInt32(currentPhraseGlobal_);s.writeInt32(messageSound_?1:0);s.writeDouble(pingVolume_);s.writeInt32(voiceEnabled_?1:0);s.writeDouble(voiceVolume_);return kResultOk;}
+tresult PLUGIN_API MotivatoratorProcessor::getState(IBStream* state){
+    if(!state)return kInvalidArgument;
+    IBStreamer s(state,kLittleEndian);
+    s.writeInt32(kStateVersion);
+    s.writeInt32(mode_);
+    s.writeInt32(language_);
+    s.writeInt32(interval_);
+    s.writeInt32(character_);
+    s.writeInt32(muted_?1:0);
+    s.writeInt32(1);
+    s.writeInt32(phrasePositive_?1:0);
+    // Keep the six legacy deck-state slots so older projects/controllers remain compatible.
+    s.writeInt32(motivatorPos_);
+    s.writeInt32(demotivatorPos_);
+    s.writeInt32(0);
+    s.writeInt32(0);
+    s.writeInt32(0);
+    s.writeInt32(0);
+    s.writeInt32(currentPhraseGlobal_);
+    s.writeInt32(messageSound_?1:0);
+    s.writeDouble(pingVolume_);
+    s.writeInt32(voiceEnabled_?1:0);
+    s.writeDouble(voiceVolume_);
+    return kResultOk;
+}
 
-tresult PLUGIN_API MotivatoratorProcessor::setState(IBStream* state){if(!state)return kInvalidArgument;IBStreamer s(state,kLittleEndian);int32 version=0,v=0;if(!s.readInt32(version)||version!=kStateVersion)return kResultFalse;if(!s.readInt32(v))return kResultFalse;mode_=std::clamp(v,0,2);if(!s.readInt32(v))return kResultFalse;language_=std::clamp(v,0,1);if(!s.readInt32(v))return kResultFalse;interval_=std::clamp(v,0,5);if(!s.readInt32(v))return kResultFalse;character_=std::clamp(v,0,2);if(!s.readInt32(v))return kResultFalse;muted_=v!=0;if(!s.readInt32(v))return kResultFalse;if(!s.readInt32(v))return kResultFalse;phrasePositive_=v!=0;if(!s.readInt32(v))return kResultFalse;motivatorPos_=std::clamp(v,0,(int)kMotivatorCount);if(!s.readInt32(v))return kResultFalse;demotivatorPos_=std::clamp(v,0,(int)kDemotivatorCount);if(!s.readInt32(v))return kResultFalse;motivatorStart_=std::clamp(v,0,(int)kMotivatorCount-1);if(!s.readInt32(v))return kResultFalse;demotivatorStart_=std::clamp(v,0,(int)kDemotivatorCount-1);if(!s.readInt32(v))return kResultFalse;motivatorStep_=(v==53)?53:37;if(!s.readInt32(v))return kResultFalse;demotivatorStep_=(v==37)?37:53;if(!s.readInt32(v))return kResultFalse;currentPhraseGlobal_=std::clamp(v,0,(int)(kPhraseCount*2)-1);int32 sound=1;if(s.readInt32(sound))messageSound_=sound!=0;double pv=.5;if(s.readDouble(pv))pingVolume_=std::clamp(pv,0.0,1.0);int32 voice=1;if(s.readInt32(voice))voiceEnabled_=voice!=0;double vv=.5;if(s.readDouble(vv))voiceVolume_=std::clamp(vv,0.0,1.0);needsPhraseEmit_=true;resetIntervalCounter();return kResultOk;}
+tresult PLUGIN_API MotivatoratorProcessor::setState(IBStream* state){
+    if(!state)return kInvalidArgument;
+    IBStreamer s(state,kLittleEndian);
+    int32 version=0,v=0;
+    if(!s.readInt32(version)||version!=kStateVersion)return kResultFalse;
+    if(!s.readInt32(v))return kResultFalse;mode_=std::clamp(v,0,2);
+    if(!s.readInt32(v))return kResultFalse;language_=std::clamp(v,0,1);
+    if(!s.readInt32(v))return kResultFalse;interval_=std::clamp(v,0,5);
+    if(!s.readInt32(v))return kResultFalse;character_=std::clamp(v,0,2);
+    if(!s.readInt32(v))return kResultFalse;muted_=v!=0;
+    if(!s.readInt32(v))return kResultFalse;
+    if(!s.readInt32(v))return kResultFalse;phrasePositive_=v!=0;
+    // Read and intentionally discard the old deterministic deck state.
+    for(int i=0;i<6;++i)if(!s.readInt32(v))return kResultFalse;
+    if(!s.readInt32(v))return kResultFalse;currentPhraseGlobal_=std::clamp(v,0,(int)(kPhraseCount*2)-1);
+    int32 sound=1;if(s.readInt32(sound))messageSound_=sound!=0;
+    double pv=.5;if(s.readDouble(pv))pingVolume_=std::clamp(pv,0.0,1.0);
+    int32 voice=1;if(s.readInt32(voice))voiceEnabled_=voice!=0;
+    double vv=.5;if(s.readDouble(vv))voiceVolume_=std::clamp(vv,0.0,1.0);
+    // A reload starts with fresh shuffled 500-card decks instead of restoring the old fixed-step sequence.
+    reshuffleDeck(true);
+    reshuffleDeck(false);
+    needsPhraseEmit_=true;
+    resetIntervalCounter();
+    return kResultOk;
+}
 
 void MotivatoratorProcessor::handleParameters(ProcessData& data){if(!data.inputParameterChanges)return;for(int32 i=0;i<data.inputParameterChanges->getParameterCount();++i){auto* q=data.inputParameterChanges->getParameterData(i);if(!q||q->getPointCount()<=0)continue;int32 o=0;ParamValue value=0.;if(q->getPoint(q->getPointCount()-1,o,value)!=kResultTrue)continue;switch(q->getParameterId()){case kModeId:{int n=normalizedToIndex(value,3);if(n!=mode_){mode_=n;chooseNextPhrase();needsPhraseEmit_=true;resetIntervalCounter();}}break;case kLanguageId:{int n=normalizedToIndex(value,2);if(n!=language_){language_=n;chooseNextPhrase();needsPhraseEmit_=true;}}break;case kIntervalId:{int n=normalizedToIndex(value,6);if(n!=interval_){interval_=n;resetIntervalCounter();}}break;case kCharacterId:character_=normalizedToIndex(value,3);break;case kMuteId:muted_=value>=.5;break;case kMessageSoundId:messageSound_=value>=.5;if(!messageSound_)pingSamplesRemaining_=0;break;case kPingVolumeId:pingVolume_=std::clamp(value,0.,1.);break;case kVoiceEnabledId:voiceEnabled_=value>=.5;if(!voiceEnabled_)voicePrototype_.resetPlayback();break;case kVoiceVolumeId:voiceVolume_=std::clamp(value,0.,1.);break;default:break;}}}
-int MotivatoratorProcessor::nextDeckIndex(bool motivator){int& pos=motivator?motivatorPos_:demotivatorPos_;int& start=motivator?motivatorStart_:demotivatorStart_;int& step=motivator?motivatorStep_:demotivatorStep_;const int count=motivator?(int)kMotivatorCount:(int)kDemotivatorCount;const int index=(start+pos*step)%count;if(++pos>=count){pos=0;start=(start+11)%count;step=(step==37)?53:37;}return index;}
-void MotivatoratorProcessor::chooseNextPhrase(){if(mode_==kModeMotivator)phrasePositive_=true;else if(mode_==kModeDemotivator)phrasePositive_=false;else{mixedRandomState_^=mixedRandomState_<<13;mixedRandomState_^=mixedRandomState_>>17;mixedRandomState_^=mixedRandomState_<<5;phrasePositive_=(mixedRandomState_&1u)!=0u;}const int local=nextDeckIndex(phrasePositive_);const int languageBase=language_==0?0:(int)kPhraseCount;const int toneBase=phrasePositive_?0:(int)kMotivatorCount;currentPhraseGlobal_=languageBase+toneBase+local;triggerPing();if(voiceEnabled_)requestVoicePrototype();}
+
+void MotivatoratorProcessor::reshuffleDeck(bool motivator) noexcept {
+    auto& deck=motivator?motivatorDeck_:demotivatorDeck_;
+    auto& pos=motivator?motivatorPos_:demotivatorPos_;
+    auto& rng=motivator?motivatorShuffleState_:demotivatorShuffleState_;
+    const int count=motivator?static_cast<int>(kMotivatorCount):static_cast<int>(kDemotivatorCount);
+    for(int i=0;i<count;++i)deck[static_cast<size_t>(i)]=static_cast<uint16_t>(i);
+    for(int i=count-1;i>0;--i){
+        const int j=static_cast<int>(nextRandom(rng)%static_cast<uint32_t>(i+1));
+        std::swap(deck[static_cast<size_t>(i)],deck[static_cast<size_t>(j)]);
+    }
+    pos=0;
+}
+
+int MotivatoratorProcessor::nextDeckIndex(bool motivator) noexcept {
+    auto& deck=motivator?motivatorDeck_:demotivatorDeck_;
+    auto& pos=motivator?motivatorPos_:demotivatorPos_;
+    const int count=motivator?static_cast<int>(kMotivatorCount):static_cast<int>(kDemotivatorCount);
+    if(pos>=count)reshuffleDeck(motivator);
+    return static_cast<int>(deck[static_cast<size_t>(pos++)]);
+}
+
+void MotivatoratorProcessor::chooseNextPhrase(){if(mode_==kModeMotivator)phrasePositive_=true;else if(mode_==kModeDemotivator)phrasePositive_=false;else{phrasePositive_=(nextRandom(mixedRandomState_)&1u)!=0u;}const int local=nextDeckIndex(phrasePositive_);const int languageBase=language_==0?0:(int)kPhraseCount;const int toneBase=phrasePositive_?0:(int)kMotivatorCount;currentPhraseGlobal_=languageBase+toneBase+local;triggerPing();if(voiceEnabled_)requestVoicePrototype();}
 void MotivatoratorProcessor::requestVoicePrototype(){if(!voiceEnabled_)return;voicePrototype_.request(currentPhraseGlobal_,character_);}
 void MotivatoratorProcessor::emitPhrase(ProcessData& data){if(!data.outputParameterChanges){needsPhraseEmit_=false;return;}int32 idx=0;if(auto* q=data.outputParameterChanges->addParameterData(kPhraseId,idx)){int32 p=0;q->addPoint(0,(double)currentPhraseGlobal_/((kPhraseCount*2)-1),p);}if(auto* q=data.outputParameterChanges->addParameterData(kPhraseToneId,idx)){int32 p=0;q->addPoint(0,phrasePositive_?0.:1.,p);}needsPhraseEmit_=false;}
 void MotivatoratorProcessor::resetIntervalCounter(){static const int seconds[]={5,10,15,20,25,30};samplesUntilNext_=std::max<int64>(1,(int64)(sampleRate_*seconds[std::clamp(interval_,0,5)]));}
