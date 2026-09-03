@@ -1,81 +1,48 @@
 #!/usr/bin/env python3
-"""Generate the runtime C++ phrase bank from the curated German/English batches.
-
-HARD RULE: this script only pairs already-written standalone comments by batch and
-position. It never composes, expands, rewrites or synthesizes phrase text.
-"""
+"""Generate the deliberately small bilingual phrase bank for Motivator Demo."""
 from __future__ import annotations
 
 import argparse
-import re
 from pathlib import Path
 
-PHRASE_RE = re.compile(r'^u"(.*)",\s*$')
-BATCH_RE = re.compile(r'Batch(\d+)\.inc$')
+MOTIVATOR = [
+    ("Das klingt sau geil.", "This sounds fucking awesome."),
+    ("Du hast es echt gut drauf.", "You really know what you're doing."),
+    ("Deine Musik ist der Wahnsinn.", "Your music is insane."),
+    ("Das wird definitiv ein Hit.", "This is definitely going to be a hit."),
+    ("Du bist sooo gut!", "You're sooo good!"),
+    ("Alter, was für ein Brett!", "Damn, this hits hard!"),
+    ("Wie geil ist das denn bitte?!", "How fucking good is this?!"),
+    ("Das klingt verdammt professionell.", "This sounds damn professional."),
+    ("Genau so muss das klingen!", "That's exactly how it should sound!"),
+    ("Du bist Profi, das merkt man.", "You can tell you're a pro."),
+]
+
+DEMOTIVATOR = [
+    ("Das klingt wie ein Unfall mit Ansage.", "This sounds like a disaster waiting to happen."),
+    ("Vielleicht ist Musik einfach nicht dein Ding.", "Maybe music just isn't your thing."),
+    ("Das war bestimmt besser, bevor du angefangen hast.", "I'm sure this was better before you started."),
+    ("Selbst deine DAW schämt sich gerade.", "Even your DAW is embarrassed right now."),
+    ("Mach ruhig weiter. Irgendwann wird's bestimmt noch schlimmer.", "Keep going. I'm sure it'll get even worse eventually."),
+    ("Das klingt erstaunlich teuer für so wenig Ergebnis.", "That sounds surprisingly expensive for so little result."),
+    ("Hast du das mit Absicht so gemacht?", "Did you actually mean to do that?"),
+    ("Dein Talent hält sich heute auffällig zurück.", "Your talent is keeping a suspiciously low profile today."),
+    ("Das braucht keinen Mix. Das braucht ein Wunder.", "This doesn't need a mix. It needs a miracle."),
+    ("Speichern würde ich mir an deiner Stelle sparen.", "If I were you, I wouldn't bother saving this."),
+]
 
 
-def read_batch(path: Path) -> dict[str, list[str]]:
-    out = {"motivator": [], "demotivator": []}
-    section: str | None = None
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        if "// MOTIVATOR" in raw:
-            section = "motivator"
-            continue
-        if "// DEMOTIVATOR" in raw:
-            section = "demotivator"
-            continue
-        m = PHRASE_RE.match(raw.strip())
-        if m and section:
-            # Keep the literal contents exactly as curated; they are already C++ escaped.
-            out[section].append(m.group(1))
-    return out
-
-
-def indexed_files(root: Path, language: str) -> dict[int, Path]:
-    result: dict[int, Path] = {}
-    for path in (root / "src" / "phrases").glob(f"Curated{language}Batch*.inc"):
-        m = BATCH_RE.search(path.name)
-        if not m:
-            continue
-        result[int(m.group(1))] = path
-    return result
-
-
-def cpp_literal(body: str) -> str:
-    # STR16 expects an ordinary string literal and supplies the UTF-16 prefix itself.
-    return f'"{body}"'
+def esc(text: str) -> str:
+    return text.replace('\\', '\\\\').replace('"', '\\"')
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--root", type=Path, required=True)  # kept for build-interface compatibility
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
-    root = args.root.resolve()
-    de_files = indexed_files(root, "German")
-    en_files = indexed_files(root, "English")
-    if set(de_files) != set(en_files):
-        raise SystemExit(f"German/English batch mismatch: DE={sorted(de_files)} EN={sorted(en_files)}")
-    if sorted(de_files) != list(range(1, 11)):
-        raise SystemExit(f"Expected batches 01..10, got {sorted(de_files)}")
-
-    motivator: list[tuple[str, str]] = []
-    demotivator: list[tuple[str, str]] = []
-    for batch in sorted(de_files):
-        de = read_batch(de_files[batch])
-        en = read_batch(en_files[batch])
-        for section, target in (("motivator", motivator), ("demotivator", demotivator)):
-            if len(de[section]) != 50 or len(en[section]) != 50:
-                raise SystemExit(
-                    f"Batch {batch:02d} {section}: expected 50/50, got DE={len(de[section])} EN={len(en[section])}"
-                )
-            target.extend(zip(de[section], en[section]))
-
-    if len(motivator) != 500 or len(demotivator) != 500:
-        raise SystemExit(f"Expected 500/500, got {len(motivator)}/{len(demotivator)}")
-
-    lines: list[str] = [
+    lines = [
         "#pragma once",
         "",
         "#include \"pluginterfaces/vst/vsttypes.h\"",
@@ -89,32 +56,31 @@ def main() -> int:
         "    const Steinberg::Vst::TChar* en;",
         "};",
         "",
-        "// AUTO-GENERATED from curated standalone phrase batches.",
-        "// One array entry = one complete German comment plus its English localization.",
-        "inline constexpr std::array<Phrase, 500> kMotivator {{",
+        "// Motivator Demo showcase: 10 positive + 10 negative bilingual phrases.",
+        "inline constexpr std::array<Phrase, 10> kMotivator {{",
     ]
-    for de, en in motivator:
-        lines.append(f"    {{STR16({cpp_literal(de)}), STR16({cpp_literal(en)})}},")
-    lines.extend(["}};", "", "inline constexpr std::array<Phrase, 500> kDemotivator {{"])
-    for de, en in demotivator:
-        lines.append(f"    {{STR16({cpp_literal(de)}), STR16({cpp_literal(en)})}},")
-    lines.extend([
+    for de, en in MOTIVATOR:
+        lines.append(f'    {{STR16("{esc(de)}"), STR16("{esc(en)}")}},')
+    lines += ["}};", "", "inline constexpr std::array<Phrase, 10> kDemotivator {{"]
+    for de, en in DEMOTIVATOR:
+        lines.append(f'    {{STR16("{esc(de)}"), STR16("{esc(en)}")}},')
+    lines += [
         "}};",
         "",
         "inline constexpr std::size_t kMotivatorCount = kMotivator.size();",
         "inline constexpr std::size_t kDemotivatorCount = kDemotivator.size();",
         "inline constexpr std::size_t kPhraseCount = kMotivatorCount + kDemotivatorCount;",
         "",
-        "static_assert(kMotivatorCount == 500, \"Motivator runtime bank must contain 500 phrases\");",
-        "static_assert(kDemotivatorCount == 500, \"Demotivator runtime bank must contain 500 phrases\");",
+        "static_assert(kMotivatorCount == 10, \"Demo must contain exactly 10 motivator phrases\");",
+        "static_assert(kDemotivatorCount == 10, \"Demo must contain exactly 10 demotivator phrases\");",
         "",
         "} // namespace MotivatoratorPhrases",
         "",
-    ])
+    ]
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text("\n".join(lines), encoding="utf-8", newline="\n")
-    print(f"Generated {args.output}: 500 MOTIVATOR + 500 DEMOTIVATOR bilingual pairs")
+    print(f"Generated {args.output}: 10 MOTIVATOR + 10 DEMOTIVATOR bilingual demo pairs")
     return 0
 
 
